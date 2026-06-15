@@ -1,17 +1,24 @@
 {
   "name": "inline-template-schematic",
-  "version": "0.0.0",
-  "description": "A blank schematics",
+  "version": "0.1.0",
+  "description": "An Angular schematic that migrates inline component templates and styles into external .html and .scss files.",
   "scripts": {
     "build": "tsc -p tsconfig.json && npm run copy-root-files && npm run copy-src-files",
-    "copy-root-files": "copyfiles package.json dist",
+    "copy-root-files": "copyfiles package.json README.md LICENSE dist",
     "copy-src-files": "copyfiles -u 1 src/**/*.json src/**/files/* src/**/*.template dist",
     "test": "npm run build && jasmine src/**/*_spec.js"
   },
   "keywords": [
-    "schematics"
+    "schematics",
+    "angular",
+    "migration",
+    "inline-template",
+    "inline-styles",
+    "refactor",
+    "templateUrl",
+    "styleUrls"
   ],
-  "author": "",
+  "author": "Damian Sire",
   "license": "MIT",
   "schematics": "./collection.json",
   "dependencies": {
@@ -24,5 +31,13 @@
     "copyfiles": "^2.4.1",
     "jasmine": "^5.0.0",
     "typescript": "^5.8.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/damiansire/angular-inline-migration-schematic.git"
+  },
+  "homepage": "https://github.com/damiansire/angular-inline-migration-schematic#readme",
+  "bugs": {
+    "url": "https://github.com/damiansire/angular-inline-migration-schematic/issues"
   }
 }
