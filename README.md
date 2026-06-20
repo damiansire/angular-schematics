@@ -112,11 +112,19 @@ Jasmine glob targets `dist/**/*_spec.js` rather than `src/`.
 
 ### Publishing
 
-To publish, simply do:
+The publishable, self-contained artifact is the `dist/` directory: the build
+compiles the TypeScript and copies `package.json`, `README.md`, `LICENSE` and
+the schematic collection (`collection.json`) into it. Because `package.json`
+declares `"schematics": "./collection.json"`, you must publish from `dist/` —
+publishing the repository root would ship a package where that path does not
+resolve (there is no `collection.json` at the root; it lives in `src/` and is
+only copied to `dist/` by the build).
+
+To publish, build first and then publish the `dist/` directory:
 
 ```bash
 npm run build
-npm publish
+npm publish ./dist
 ```
 
 That's it!
