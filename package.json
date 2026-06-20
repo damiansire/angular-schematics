@@ -6,7 +6,7 @@
     "build": "tsc -p tsconfig.json && npm run copy-root-files && npm run copy-src-files",
     "copy-root-files": "copyfiles package.json README.md LICENSE dist",
     "copy-src-files": "copyfiles -u 1 src/**/*.json src/**/files/* src/**/*.template dist",
-    "test": "npm run build && jasmine src/**/*_spec.js"
+    "test": "npm run build && jasmine \"dist/**/*_spec.js\""
   },
   "keywords": [
     "schematics",

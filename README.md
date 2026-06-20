@@ -95,7 +95,20 @@ This workflow allows you to quickly test changes to your schematic without needi
 
 ### Unit Testing
 
-`npm run test` will run the unit tests, using Jasmine as a runner and test framework.
+`npm run test` builds the schematic and then runs the unit tests with
+[Jasmine](https://jasmine.github.io/) as the runner and test framework.
+
+The tests are characterization tests written with `SchematicTestRunner` from
+`@angular-devkit/schematics/testing` (see `src/inline-migration/index_spec.ts`).
+They run the schematic against in-memory components and assert on the resulting
+tree, covering: inline template only, inline styles only (string and array
+forms), template + styles together, the migrated property appearing first / last /
+as the only property in the decorator, and a preexisting destination file being
+left untouched. Each case also asserts the rewritten `.ts` still parses without
+errors, guarding against decorator corruption (e.g. a stray leading comma).
+
+The spec files are compiled to `dist/` as part of the build, which is why the
+Jasmine glob targets `dist/**/*_spec.js` rather than `src/`.
 
 ### Publishing
 
