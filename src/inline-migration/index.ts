@@ -161,23 +161,32 @@ export function migrarTemplates(): Rule {
               if (templatePropertyNode) {
                 const recorder = tree.beginUpdate(filePath);
                 const fileLength = content.length;
-                
+
+                // If the property is the first one in the decorator, getFullStart
+                // points right after '{' and there is no leading comma. A leading
+                // comma in the inserted text would produce '@Component({, ... })'.
+                const isFirstProperty = componentDecorator.properties[0] === templatePropertyNode;
+
                 // Calculate safe removal range
                 let removalStart = Math.max(0, templatePropertyNode.getFullStart());
                 let removalEnd = Math.min(fileLength, templatePropertyNode.getEnd());
 
-                // Check for comma before
-                const textBeforeNode = content.substring(0, removalStart);
-                const commaMatchBefore = textBeforeNode.match(/,\s*$/);
-                
-                if (commaMatchBefore) {
-                  removalStart = Math.max(0, removalStart - commaMatchBefore[0].length);
+                // Check for comma before (only relevant when not the first property)
+                if (!isFirstProperty) {
+                  const textBeforeNode = content.substring(0, removalStart);
+                  const commaMatchBefore = textBeforeNode.match(/,\s*$/);
+
+                  if (commaMatchBefore) {
+                    removalStart = Math.max(0, removalStart - commaMatchBefore[0].length);
+                  }
                 }
 
                 // Ensure we're not trying to remove beyond file bounds
                 if (removalStart < fileLength && removalEnd <= fileLength) {
                   recorder.remove(removalStart, removalEnd - removalStart);
-                  const textToInsert = `,\n  templateUrl: '${relativeHtmlPath}'`;
+                  const textToInsert = isFirstProperty
+                    ? `\n  templateUrl: '${relativeHtmlPath}'`
+                    : `,\n  templateUrl: '${relativeHtmlPath}'`;
                   recorder.insertLeft(removalStart, textToInsert);
                   tree.commitUpdate(recorder);
                 } else {
@@ -224,31 +233,39 @@ export function migrarTemplates(): Rule {
                 const recorder = tree.beginUpdate(filePath);
                 const fileLength = stylesContentSource.length;
 
+                // If the property is the first one in the decorator, getFullStart
+                // points right after '{' and there is no leading comma. A leading
+                // comma in the inserted text would produce '@Component({, ... })'.
+                const isFirstProperty = stylesComponentDecorator.properties[0] === stylesPropertyNode;
+
                 // Calculate safe removal range
                 let removalStart = Math.max(0, stylesPropertyNode.getFullStart());
                 let removalEnd = Math.min(fileLength, stylesPropertyNode.getEnd());
 
-                // Check for comma before
-                const textBeforeNode = stylesContentSource.substring(0, removalStart);
-                const commaMatchBefore = textBeforeNode.match(/,\s*$/);
-                
-                if (commaMatchBefore) {
-                  removalStart = Math.max(0, removalStart - commaMatchBefore[0].length);
+                // Check for comma before (only relevant when not the first property)
+                if (!isFirstProperty) {
+                  const textBeforeNode = stylesContentSource.substring(0, removalStart);
+                  const commaMatchBefore = textBeforeNode.match(/,\s*$/);
+
+                  if (commaMatchBefore) {
+                    removalStart = Math.max(0, removalStart - commaMatchBefore[0].length);
+                  }
                 }
 
                 // Ensure we're not trying to remove beyond file bounds
                 if (removalStart < fileLength && removalEnd <= fileLength) {
                   recorder.remove(removalStart, removalEnd - removalStart);
 
+                  const connector = isFirstProperty ? '\n  ' : ',\n  ';
                   if (Array.isArray(stylesContent)) {
-                    const styleUrls = stylesContent.map((style, index) => 
+                    const styleUrls = stylesContent.map((style, index) =>
                       createScssFile(tree, componentDir, componentBaseName, style, index)
                     );
-                    const textToInsert = `,\n  styleUrls: [${styleUrls.map(url => `'${url}'`).join(', ')}]`;
+                    const textToInsert = `${connector}styleUrls: [${styleUrls.map(url => `'${url}'`).join(', ')}]`;
                     recorder.insertLeft(removalStart, textToInsert);
                   } else {
                     const scssPath = createScssFile(tree, componentDir, componentBaseName, stylesContent);
-                    const textToInsert = `,\n  styleUrls: ['${scssPath}']`;
+                    const textToInsert = `${connector}styleUrls: ['${scssPath}']`;
                     recorder.insertLeft(removalStart, textToInsert);
                   }
 
