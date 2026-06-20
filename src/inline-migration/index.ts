@@ -153,12 +153,26 @@ export function migrarTemplates(): Rule {
               const htmlFilePath = normalize(join(componentDir, htmlFileName));
               const relativeHtmlPath = `./${htmlFileName}`;
 
-              if (!tree.exists(htmlFilePath)) {
+              // Data-loss guard: if the destination already exists with
+              // DIFFERENT content, migrating would delete the inline template
+              // while repointing the component at unrelated content. Skip the
+              // whole migration for this component and leave the .ts intact.
+              let safeToMigrateTemplate = true;
+              if (tree.exists(htmlFilePath)) {
+                const existingBuffer = tree.read(htmlFilePath);
+                const existingHtml = existingBuffer ? existingBuffer.toString("utf-8") : "";
+                if (existingHtml !== (templateContent as string)) {
+                  context.logger.warn(
+                    `  ⚠️ Skipping template migration for ${filePath}: ${htmlFileName} already exists with different content. Inline template left intact to avoid data loss.`
+                  );
+                  safeToMigrateTemplate = false;
+                }
+              } else {
                 tree.create(htmlFilePath, templateContent as string);
               }
 
               const templatePropertyNode = getDecoratorPropertyNode(componentDecorator, "template");
-              if (templatePropertyNode) {
+              if (safeToMigrateTemplate && templatePropertyNode) {
                 const recorder = tree.beginUpdate(filePath);
                 const fileLength = content.length;
 
@@ -229,7 +243,30 @@ export function migrarTemplates(): Rule {
               const componentBaseName = basename(filePath, ".ts");
               const stylesPropertyNode = getDecoratorPropertyNode(stylesComponentDecorator, "styles");
 
-              if (stylesPropertyNode) {
+              // Data-loss guard: if any destination .scss already exists with
+              // DIFFERENT content, migrating would delete the inline styles
+              // while repointing the component at unrelated content. Detect the
+              // conflict before mutating anything, mirroring createScssFile's
+              // naming, and skip the migration for this component if found.
+              const styleValues = Array.isArray(stylesContent) ? stylesContent : [stylesContent];
+              const styleConflict = styleValues.some((style, index) => {
+                const scssFileName = index === 0
+                  ? `${componentBaseName}.scss`
+                  : `${componentBaseName}-${index + 1}.scss`;
+                const scssFilePath = normalize(join(componentDir, scssFileName));
+                if (!tree.exists(scssFilePath)) {
+                  return false;
+                }
+                const existingBuffer = tree.read(scssFilePath);
+                const existingScss = existingBuffer ? existingBuffer.toString("utf-8") : "";
+                return existingScss !== style;
+              });
+
+              if (styleConflict) {
+                context.logger.warn(
+                  `  ⚠️ Skipping styles migration for ${filePath}: a destination .scss already exists with different content. Inline styles left intact to avoid data loss.`
+                );
+              } else if (stylesPropertyNode) {
                 const recorder = tree.beginUpdate(filePath);
                 const fileLength = stylesContentSource.length;
 
