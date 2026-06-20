@@ -23,13 +23,16 @@ export class FooComponent {}
 `;
 }
 
-async function migrate(files: Record<string, string>): Promise<UnitTestTree> {
+async function migrate(
+  files: Record<string, string>,
+  options: Record<string, unknown> = {}
+): Promise<UnitTestTree> {
   const runner = new SchematicTestRunner("inline-migration", collectionPath);
   const tree = Tree.empty();
   for (const [path, content] of Object.entries(files)) {
     tree.create(path, content);
   }
-  return runner.runSchematic("inline-migration", {}, tree);
+  return runner.runSchematic("inline-migration", options, tree);
 }
 
 const COMPONENT = "/src/app/foo.component.ts";
@@ -127,8 +130,8 @@ describe("inline-migration schematic", () => {
     expect(parseErrorCount(out)).toBe(0);
   });
 
-  it("does not overwrite a preexisting destination file", async () => {
-    const result = await migrate({
+  describe("destination file already exists with different content", () => {
+    const conflictFiles = () => ({
       [COMPONENT]: componentFile(`
   selector: 'app-foo',
   template: '<p>new</p>',
@@ -136,9 +139,38 @@ describe("inline-migration schematic", () => {
       "/src/app/foo.component.html": "<p>existing</p>",
     });
 
-    // The .ts is still rewritten to point at the file, but its content is preserved.
-    expect(result.readContent("/src/app/foo.component.html")).toBe("<p>existing</p>");
-    expect(result.readContent(COMPONENT)).toContain("templateUrl: './foo.component.html'");
+    it("skips the migration by default, leaving the inline template intact (no data loss)", async () => {
+      const result = await migrate(conflictFiles());
+
+      // Existing file untouched AND the inline template preserved.
+      expect(result.readContent("/src/app/foo.component.html")).toBe("<p>existing</p>");
+      const out = result.readContent(COMPONENT);
+      expect(out).toContain("template: '<p>new</p>'");
+      expect(out).not.toContain("templateUrl");
+      expect(parseErrorCount(out)).toBe(0);
+    });
+
+    it("overwrites the destination with the inline content when onConflict=overwrite", async () => {
+      const result = await migrate(conflictFiles(), { onConflict: "overwrite" });
+
+      expect(result.readContent("/src/app/foo.component.html")).toBe("<p>new</p>");
+      const out = result.readContent(COMPONENT);
+      expect(out).toContain("templateUrl: './foo.component.html'");
+      expect(out).not.toContain("template:");
+      expect(parseErrorCount(out)).toBe(0);
+    });
+
+    it("writes to a suffixed file, preserving both, when onConflict=suffix", async () => {
+      const result = await migrate(conflictFiles(), { onConflict: "suffix" });
+
+      // Existing file preserved; inline written to a new, non-colliding file.
+      expect(result.readContent("/src/app/foo.component.html")).toBe("<p>existing</p>");
+      expect(result.readContent("/src/app/foo.component.1.html")).toBe("<p>new</p>");
+      const out = result.readContent(COMPONENT);
+      expect(out).toContain("templateUrl: './foo.component.1.html'");
+      expect(out).not.toContain("template:");
+      expect(parseErrorCount(out)).toBe(0);
+    });
   });
 
   it("leaves a component that already uses templateUrl/styleUrls untouched", async () => {

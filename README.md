@@ -16,7 +16,7 @@ The schematic (`inline-template-schematic:mt`) performs the following actions in
     - For each style string, it creates a new `.scss` file (e.g., `my-component.component.scss`, `my-component-2.scss`, etc.) in the same directory with that content.
     - Replaces the `styles: [...]` property with `styleUrls: ['./my-component.component.scss', ...]` in the `.ts` file.
 4.  **Comma Handling:** Attempts to automatically adjust commas when replacing properties in the decorator.
-5.  **Safety:** Does not overwrite existing `.html` or `.scss` files. Logs warnings and errors to the console.
+5.  **Safety (no silent data loss):** When a destination `.html`/`.scss` already exists with **different** content, the schematic does **not** silently drop the inline source. Its behaviour is controlled by the [`onConflict`](#options) option (default `skip`): it warns and leaves the component untouched. Use `overwrite` or `suffix` to opt into a different policy.
 
 ## Usage in a Project
 
@@ -44,6 +44,23 @@ To use this schematic in your Angular project:
     ```
 
     The schematic will analyze your project and apply the necessary migrations. Review the generated changes before committing them.
+
+### Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `onConflict` | `'skip' \| 'overwrite' \| 'suffix'` | `skip` | What to do when the destination `.html`/`.scss` already exists with **different** content. `skip`: leave the inline source intact and warn (no data loss). `overwrite`: replace the destination file with the inline content. `suffix`: write to a new, non-colliding file (e.g. `my-component.component.1.html`) and keep the existing one. |
+
+```bash
+# Default (safe): skip components whose destination already exists
+ng g inline-template-schematic:mt
+
+# Replace existing destination files with the inline content
+ng g inline-template-schematic:mt --on-conflict overwrite
+
+# Keep both: write the inline content to a suffixed file
+ng g inline-template-schematic:mt --on-conflict suffix
+```
 
 ## Schematic Development
 
@@ -103,9 +120,10 @@ The tests are characterization tests written with `SchematicTestRunner` from
 They run the schematic against in-memory components and assert on the resulting
 tree, covering: inline template only, inline styles only (string and array
 forms), template + styles together, the migrated property appearing first / last /
-as the only property in the decorator, and a preexisting destination file being
-left untouched. Each case also asserts the rewritten `.ts` still parses without
-errors, guarding against decorator corruption (e.g. a stray leading comma).
+as the only property in the decorator, and the three `onConflict` policies when a
+destination file already exists (`skip` / `overwrite` / `suffix`). Each case also
+asserts the rewritten `.ts` still parses without errors, guarding against
+decorator corruption (e.g. a stray leading comma).
 
 The spec files are compiled to `dist/` as part of the build, which is why the
 Jasmine glob targets `dist/**/*_spec.js` rather than `src/`.

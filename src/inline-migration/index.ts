@@ -83,33 +83,94 @@ function getDecoratorPropertyNode(
 }
 
 /**
- * Creates a SCSS file with the given content and returns the relative path.
+ * How to behave when the destination file (.html/.scss) already exists with
+ * content DIFFERENT from the inline source we are about to externalize.
+ *   - skip      : leave the inline source intact and warn (default, no data loss)
+ *   - overwrite : replace the destination file with the inline content
+ *   - suffix    : write to a new, non-colliding file (e.g. foo.component.1.html)
  */
-function createScssFile(
-  tree: Tree,
-  componentDir: string,
-  componentBaseName: string,
-  content: string,
-  index: number = 0
-): string {
-  const scssFileName = index === 0 
-    ? `${componentBaseName}.scss` 
-    : `${componentBaseName}-${index + 1}.scss`;
-  const scssFilePath = normalize(join(componentDir, scssFileName));
-  const relativeScssPath = `./${scssFileName}`;
+type OnConflict = "skip" | "overwrite" | "suffix";
 
-  if (!tree.exists(scssFilePath)) {
-    tree.create(scssFilePath, content);
+interface ConflictResolution {
+  /** What to do with the destination file. */
+  action: "create" | "overwrite" | "reuse" | "skip";
+  /** Final file name to reference from the decorator (may be suffixed). */
+  fileName: string;
+}
+
+/**
+ * Decides what to do with a single destination file given the conflict policy.
+ * Centralizes the data-loss guard: a migration must never silently drop the
+ * inline source nor clobber an unrelated existing file unless explicitly asked.
+ */
+function resolveConflict(
+  tree: Tree,
+  context: SchematicContext,
+  componentDir: string,
+  fileName: string,
+  content: string,
+  onConflict: OnConflict,
+  componentPath: string,
+  kind: "template" | "styles"
+): ConflictResolution {
+  const fullPath = normalize(join(componentDir, fileName));
+
+  if (!tree.exists(fullPath)) {
+    return { action: "create", fileName };
   }
 
-  return relativeScssPath;
+  const existingBuffer = tree.read(fullPath);
+  const existing = existingBuffer ? existingBuffer.toString("utf-8") : "";
+  if (existing === content) {
+    // Same content already on disk: just repoint, nothing to write.
+    return { action: "reuse", fileName };
+  }
+
+  // Conflict: destination exists with DIFFERENT content.
+  if (onConflict === "overwrite") {
+    context.logger.warn(
+      `  ⚠️ Overwriting ${fileName} for ${componentPath} (onConflict=overwrite).`
+    );
+    return { action: "overwrite", fileName };
+  }
+
+  if (onConflict === "suffix") {
+    const dot = fileName.lastIndexOf(".");
+    const stem = dot === -1 ? fileName : fileName.substring(0, dot);
+    const ext = dot === -1 ? "" : fileName.substring(dot);
+    let i = 1;
+    let candidate = `${stem}.${i}${ext}`;
+    while (tree.exists(normalize(join(componentDir, candidate)))) {
+      i++;
+      candidate = `${stem}.${i}${ext}`;
+    }
+    context.logger.warn(
+      `  ⚠️ ${fileName} already exists for ${componentPath}; writing ${kind} to ${candidate} instead (onConflict=suffix).`
+    );
+    return { action: "create", fileName: candidate };
+  }
+
+  // Default: skip. Leave the inline source intact and warn.
+  context.logger.warn(
+    `  ⚠️ Skipping ${kind} migration for ${componentPath}: ${fileName} already exists with different content. Inline ${kind} left intact to avoid data loss (onConflict=skip).`
+  );
+  return { action: "skip", fileName };
 }
 
 // --- Main Schematic Rule ---
 
-export function migrarTemplates(): Rule {
+export interface MigrarTemplatesOptions {
+  /** Conflict policy when a destination file already exists (default 'skip'). */
+  onConflict?: OnConflict;
+}
+
+export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
+  const onConflict: OnConflict = options.onConflict ?? "skip";
+
   return (tree: Tree, context: SchematicContext): Tree => {
-    context.logger.info("🚀 Starting search for components with inline templates and styles...");
+    context.logger.info(
+      `🚀 Starting search for components with inline templates and styles (onConflict=${onConflict})...`
+    );
 
     try {
       tree.getDir("/src").visit((filePath) => {
@@ -150,26 +211,22 @@ export function migrarTemplates(): Rule {
               const componentDir = dirname(filePath);
               const componentBaseName = basename(filePath, ".ts");
               const htmlFileName = `${componentBaseName}.html`;
-              const htmlFilePath = normalize(join(componentDir, htmlFileName));
-              const relativeHtmlPath = `./${htmlFileName}`;
 
-              // Data-loss guard: if the destination already exists with
-              // DIFFERENT content, migrating would delete the inline template
-              // while repointing the component at unrelated content. Skip the
-              // whole migration for this component and leave the .ts intact.
-              let safeToMigrateTemplate = true;
-              if (tree.exists(htmlFilePath)) {
-                const existingBuffer = tree.read(htmlFilePath);
-                const existingHtml = existingBuffer ? existingBuffer.toString("utf-8") : "";
-                if (existingHtml !== (templateContent as string)) {
-                  context.logger.warn(
-                    `  ⚠️ Skipping template migration for ${filePath}: ${htmlFileName} already exists with different content. Inline template left intact to avoid data loss.`
-                  );
-                  safeToMigrateTemplate = false;
-                }
-              } else {
-                tree.create(htmlFilePath, templateContent as string);
+              // Resolve the destination against the conflict policy BEFORE
+              // mutating the .ts, so we never drop the inline template unless
+              // it is safe (or the user explicitly asked to overwrite/suffix).
+              const resolution = resolveConflict(
+                tree, context, componentDir, htmlFileName, templateContent as string, onConflict, filePath, "template"
+              );
+              const safeToMigrateTemplate = resolution.action !== "skip";
+              const relativeHtmlPath = `./${resolution.fileName}`;
+              const targetHtmlPath = normalize(join(componentDir, resolution.fileName));
+              if (resolution.action === "create") {
+                tree.create(targetHtmlPath, templateContent as string);
+              } else if (resolution.action === "overwrite") {
+                tree.overwrite(targetHtmlPath, templateContent as string);
               }
+              // 'reuse': destination already holds the right content; 'skip': handled below.
 
               const templatePropertyNode = getDecoratorPropertyNode(componentDecorator, "template");
               if (safeToMigrateTemplate && templatePropertyNode) {
@@ -243,29 +300,26 @@ export function migrarTemplates(): Rule {
               const componentBaseName = basename(filePath, ".ts");
               const stylesPropertyNode = getDecoratorPropertyNode(stylesComponentDecorator, "styles");
 
-              // Data-loss guard: if any destination .scss already exists with
-              // DIFFERENT content, migrating would delete the inline styles
-              // while repointing the component at unrelated content. Detect the
-              // conflict before mutating anything, mirroring createScssFile's
-              // naming, and skip the migration for this component if found.
+              // Resolve each destination .scss against the conflict policy BEFORE
+              // mutating anything. In 'skip' mode any conflict aborts the whole
+              // styles migration (inline left intact); otherwise each file is
+              // created / overwritten / suffixed per the policy.
               const styleValues = Array.isArray(stylesContent) ? stylesContent : [stylesContent];
-              const styleConflict = styleValues.some((style, index) => {
+              const styleResolutions = styleValues.map((style, index) => {
                 const scssFileName = index === 0
                   ? `${componentBaseName}.scss`
                   : `${componentBaseName}-${index + 1}.scss`;
-                const scssFilePath = normalize(join(componentDir, scssFileName));
-                if (!tree.exists(scssFilePath)) {
-                  return false;
-                }
-                const existingBuffer = tree.read(scssFilePath);
-                const existingScss = existingBuffer ? existingBuffer.toString("utf-8") : "";
-                return existingScss !== style;
+                return {
+                  style,
+                  resolution: resolveConflict(
+                    tree, context, componentDir, scssFileName, style, onConflict, filePath, "styles"
+                  ),
+                };
               });
+              const stylesSkip = styleResolutions.some((r) => r.resolution.action === "skip");
 
-              if (styleConflict) {
-                context.logger.warn(
-                  `  ⚠️ Skipping styles migration for ${filePath}: a destination .scss already exists with different content. Inline styles left intact to avoid data loss.`
-                );
+              if (stylesSkip) {
+                // Per-element warnings already emitted by resolveConflict; leave inline intact.
               } else if (stylesPropertyNode) {
                 const recorder = tree.beginUpdate(filePath);
                 const fileLength = stylesContentSource.length;
@@ -294,17 +348,18 @@ export function migrarTemplates(): Rule {
                   recorder.remove(removalStart, removalEnd - removalStart);
 
                   const connector = isFirstProperty ? '\n  ' : ',\n  ';
-                  if (Array.isArray(stylesContent)) {
-                    const styleUrls = stylesContent.map((style, index) =>
-                      createScssFile(tree, componentDir, componentBaseName, style, index)
-                    );
-                    const textToInsert = `${connector}styleUrls: [${styleUrls.map(url => `'${url}'`).join(', ')}]`;
-                    recorder.insertLeft(removalStart, textToInsert);
-                  } else {
-                    const scssPath = createScssFile(tree, componentDir, componentBaseName, stylesContent);
-                    const textToInsert = `${connector}styleUrls: ['${scssPath}']`;
-                    recorder.insertLeft(removalStart, textToInsert);
-                  }
+                  const styleUrls = styleResolutions.map(({ style, resolution }) => {
+                    const target = normalize(join(componentDir, resolution.fileName));
+                    if (resolution.action === "create") {
+                      tree.create(target, style);
+                    } else if (resolution.action === "overwrite") {
+                      tree.overwrite(target, style);
+                    }
+                    // 'reuse': destination already holds the right content.
+                    return `./${resolution.fileName}`;
+                  });
+                  const textToInsert = `${connector}styleUrls: [${styleUrls.map(url => `'${url}'`).join(', ')}]`;
+                  recorder.insertLeft(removalStart, textToInsert);
 
                   tree.commitUpdate(recorder);
                 } else {

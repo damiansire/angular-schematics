@@ -3,6 +3,13 @@
     "$id": "MigrarTemplatesInlineSchema",
     "title": "Migrar Templates Inline Schema",
     "type": "object",
-    "properties": {},
+    "properties": {
+        "onConflict": {
+            "type": "string",
+            "enum": ["skip", "overwrite", "suffix"],
+            "default": "skip",
+            "description": "Qué hacer cuando el archivo destino (.html/.scss) ya existe con contenido distinto: 'skip' deja el inline intacto y avisa (default, sin pérdida de datos); 'overwrite' pisa el destino con el contenido inline; 'suffix' escribe en un archivo con sufijo numérico (foo.component.1.html) para no perder ninguno."
+        }
+    },
     "required": []
 }
