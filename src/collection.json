@@ -1,13 +1,11 @@
 {
   "$schema": "../node_modules/@angular-devkit/schematics/collection-schema.json",
   "schematics": {
-    "migrar-templates": {
+    "inline-migration": {
       "description": "Migra templates inline ('template') en componentes a archivos HTML externos ('templateUrl').",
-      "factory": "./migrar-templates/index#migrarTemplates",
-      "schema": "./migrar-templates/schema.json",
-      "aliases": [
-        "mt"
-      ]
+      "factory": "./inline-migration/index#migrarTemplates",
+      "schema": "./inline-migration/schema.json",
+      "aliases": ["mt"]
     }
   }
 }
