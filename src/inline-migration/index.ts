@@ -187,28 +187,49 @@ export function migrarTemplates(): Rule {
             }
           }
 
-          // Handle styles migration
-          const hasStyleUrls = componentDecorator.properties.some(
+          // Handle styles migration.
+          // Re-read and re-parse the file: the template migration above may have
+          // committed changes that shifted the file length, leaving any offsets
+          // taken from the original sourceFile stale. Working from the current
+          // content guarantees the styles removal range is correct.
+          const stylesFileBuffer = tree.read(filePath);
+          if (!stylesFileBuffer) {
+            context.logger.warn(`  ⚠️ Could not re-read file for styles migration: ${filePath}`);
+            return;
+          }
+          const stylesContentSource = stylesFileBuffer.toString("utf-8");
+          const stylesSourceFile = ts.createSourceFile(
+            filePath,
+            stylesContentSource,
+            ts.ScriptTarget.Latest,
+            true
+          );
+          const stylesComponentDecorator = findComponentDecorator(stylesSourceFile);
+          if (!stylesComponentDecorator) {
+            return;
+          }
+
+          const hasStyleUrls = stylesComponentDecorator.properties.some(
             (prop) => ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name) && prop.name.text === "styleUrls"
           );
 
           if (!hasStyleUrls) {
-            const stylesContent = getDecoratorPropertyValue(componentDecorator, "styles");
+            const stylesContent = getDecoratorPropertyValue(stylesComponentDecorator, "styles");
             if (stylesContent !== undefined) {
               const componentDir = dirname(filePath);
               const componentBaseName = basename(filePath, ".ts");
-              const stylesPropertyNode = getDecoratorPropertyNode(componentDecorator, "styles");
+              const stylesPropertyNode = getDecoratorPropertyNode(stylesComponentDecorator, "styles");
 
               if (stylesPropertyNode) {
                 const recorder = tree.beginUpdate(filePath);
-                const fileLength = content.length;
-                
+                const fileLength = stylesContentSource.length;
+
                 // Calculate safe removal range
                 let removalStart = Math.max(0, stylesPropertyNode.getFullStart());
                 let removalEnd = Math.min(fileLength, stylesPropertyNode.getEnd());
 
                 // Check for comma before
-                const textBeforeNode = content.substring(0, removalStart);
+                const textBeforeNode = stylesContentSource.substring(0, removalStart);
                 const commaMatchBefore = textBeforeNode.match(/,\s*$/);
                 
                 if (commaMatchBefore) {
