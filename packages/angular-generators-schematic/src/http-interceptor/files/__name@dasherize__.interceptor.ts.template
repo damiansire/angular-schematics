@@ -1,0 +1,47 @@
+import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { catchError, retry, throwError, timer } from 'rxjs';
+
+/** How many times to retry a transient (5xx / network) failure. */
+const MAX_RETRIES = <%= retries %>;
+
+/** A response that is worth retrying: network glitch (status 0) or any 5xx. */
+function isTransient(error: HttpErrorResponse): boolean {
+  return error.status === 0 || (error.status >= 500 && error.status < 600);
+}
+
+/**
+ * <%= classify(name) %> HTTP interceptor.
+ *
+ * Register it with:
+ *   provideHttpClient(withInterceptors([<%= camelize(name) %>Interceptor]))
+ */
+export const <%= camelize(name) %>Interceptor: HttpInterceptorFn = (req, next) => {
+  // `inject` works here because functional interceptors run inside the
+  // injection context. Pull in any dependency (auth token, logger, ...) here.
+
+  return next(req).pipe(
+    retry({
+      count: MAX_RETRIES,
+      // Exponential backoff, but only for transient errors. Non-transient
+      // errors (4xx, etc.) re-throw immediately and skip the remaining retries.
+      delay: (error: HttpErrorResponse, retryCount: number) => {
+        if (!isTransient(error)) {
+          return throwError(() => error);
+        }
+        return timer(Math.pow(2, retryCount - 1) * 500);
+      },
+    }),
+    catchError((error: HttpErrorResponse) => {
+      const message =
+        error.error instanceof ErrorEvent
+          ? `Client error: ${error.error.message}`
+          : `Server returned ${error.status} for ${req.method} ${req.urlWithParams}`;
+
+      // Centralize logging / user notification here.
+      console.error(`[<%= camelize(name) %>Interceptor] ${message}`);
+
+      return throwError(() => error);
+    }),
+  );
+};

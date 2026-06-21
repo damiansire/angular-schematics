@@ -1,0 +1,23 @@
+{
+  "$schema": "../node_modules/@angular-devkit/schematics/collection-schema.json",
+  "schematics": {
+    "signal-store": {
+      "description": "Genera un store/servicio basado en signals (estado privado con WritableSignal, selectors con computed y métodos de actualización inmutables).",
+      "factory": "./signal-store/index#signalStore",
+      "schema": "./signal-store/schema.json",
+      "aliases": ["ss"]
+    },
+    "http-interceptor": {
+      "description": "Genera un HttpInterceptorFn funcional con manejo de errores y retry configurable.",
+      "factory": "./http-interceptor/index#httpInterceptor",
+      "schema": "./http-interceptor/schema.json",
+      "aliases": ["hi"]
+    },
+    "smart-dumb": {
+      "description": "Genera un par de componentes standalone: un container (smart) que maneja estado y un presentational (dumb) con inputs/outputs, ya cableados entre sí.",
+      "factory": "./smart-dumb/index#smartDumb",
+      "schema": "./smart-dumb/schema.json",
+      "aliases": ["sd"]
+    }
+  }
+}

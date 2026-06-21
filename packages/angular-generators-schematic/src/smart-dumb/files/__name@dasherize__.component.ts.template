@@ -1,0 +1,36 @@
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+
+/**
+ * <%= classify(name) %>Component — presentational (dumb).
+ *
+ * Owns no state and talks to no services: it renders the data it receives
+ * through inputs and emits user intent through outputs. Reusable and trivial
+ * to test in isolation.
+ */
+@Component({
+  selector: '<%= prefix %>-<%= dasherize(name) %>',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <section class="<%= dasherize(name) %>">
+      @if (loading()) {
+        <p>Loading…</p>
+      } @else {
+        <ul>
+          @for (item of items(); track item) {
+            <li (click)="selected.emit(item)">{{ item }}</li>
+          }
+        </ul>
+      }
+    </section>
+  `,
+})
+export class <%= classify(name) %>Component {
+  /** Data to render, provided by the container. */
+  readonly items = input<unknown[]>([]);
+  /** Whether the container is currently fetching data. */
+  readonly loading = input(false);
+
+  /** Emitted when the user picks an item. */
+  readonly selected = output<unknown>();
+}

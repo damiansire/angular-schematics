@@ -1,0 +1,65 @@
+{
+  "name": "angular-generators-schematic",
+  "version": "0.1.0",
+  "description": "A collection of Angular generator schematics: a signals-based store service, a functional HTTP interceptor with retry/error handling, and a paired smart/dumb (container + presentational) component set.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && npm run copy-root-files && npm run copy-src-files",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "copy-root-files": "copyfiles package.json README.md dist && copyfiles -f ../../LICENSE dist",
+    "copy-src-files": "copyfiles -u 1 src/**/*.json src/**/files/** src/**/*.template dist",
+    "test": "npm run build && jasmine \"dist/**/*_spec.js\""
+  },
+  "keywords": [
+    "schematics",
+    "angular",
+    "generator",
+    "signals",
+    "store",
+    "http-interceptor",
+    "smart-dumb",
+    "container-presentational",
+    "standalone"
+  ],
+  "author": "Damian Sire",
+  "license": "MIT",
+  "schematics": "./collection.json",
+  "files": [
+    "collection.json",
+    "signal-store/**/*.js",
+    "signal-store/**/*.d.ts",
+    "signal-store/**/*.json",
+    "signal-store/**/files/**",
+    "http-interceptor/**/*.js",
+    "http-interceptor/**/*.d.ts",
+    "http-interceptor/**/*.json",
+    "http-interceptor/**/files/**",
+    "smart-dumb/**/*.js",
+    "smart-dumb/**/*.d.ts",
+    "smart-dumb/**/*.json",
+    "smart-dumb/**/files/**",
+    "!**/*_spec.*"
+  ],
+  "dependencies": {
+    "@angular-devkit/core": "^19.2.7",
+    "@angular-devkit/schematics": "^19.2.7"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "devDependencies": {
+    "@types/jasmine": "~5.1.0",
+    "@types/node": "^18.18.0",
+    "copyfiles": "^2.4.1",
+    "jasmine": "^5.0.0",
+    "typescript": "^5.8.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/damiansire/angular-schematics.git",
+    "directory": "packages/angular-generators-schematic"
+  },
+  "homepage": "https://github.com/damiansire/angular-schematics/tree/main/packages/angular-generators-schematic#readme",
+  "bugs": {
+    "url": "https://github.com/damiansire/angular-schematics/issues"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "$id": "SignalStoreSchema",
+  "title": "Signal Store Schema",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre del store (ej. 'cart' genera CartStore en cart.store.ts).",
+      "$default": {
+        "$source": "argv",
+        "index": 0
+      },
+      "x-prompt": "¿Cómo se llama el store?"
+    },
+    "path": {
+      "type": "string",
+      "default": "src/app",
+      "description": "Carpeta donde generar el store, relativa a la raíz del proyecto."
+    },
+    "entity": {
+      "type": "string",
+      "description": "Tipo TypeScript de la entidad que mantiene el estado (ej. 'Product'). Si se omite, se usa 'unknown'."
+    }
+  },
+  "required": ["name"]
+}

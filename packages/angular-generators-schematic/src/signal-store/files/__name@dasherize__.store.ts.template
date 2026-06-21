@@ -1,0 +1,56 @@
+import { computed, Injectable, signal } from '@angular/core';
+
+/** State held by the <%= classify(name) %> store. */
+export interface <%= classify(name) %>State {
+  items: <%= entity %>[];
+  loading: boolean;
+  error: string | null;
+}
+
+const initialState: <%= classify(name) %>State = {
+  items: [],
+  loading: false,
+  error: null,
+};
+
+@Injectable({ providedIn: 'root' })
+export class <%= classify(name) %>Store {
+  // Private writable state: only this store can mutate it.
+  private readonly state = signal<<%= classify(name) %>State>(initialState);
+
+  // Public, read-only selectors derived from the state signal.
+  readonly items = computed(() => this.state().items);
+  readonly loading = computed(() => this.state().loading);
+  readonly error = computed(() => this.state().error);
+  readonly count = computed(() => this.state().items.length);
+
+  /** Replaces the full list of items. */
+  setItems(items: <%= entity %>[]): void {
+    this.patch({ items, error: null });
+  }
+
+  /** Appends a single item to the list. */
+  addItem(item: <%= entity %>): void {
+    this.patch({ items: [...this.state().items, item] });
+  }
+
+  /** Toggles the loading flag. */
+  setLoading(loading: boolean): void {
+    this.patch({ loading });
+  }
+
+  /** Records an error message (and clears loading). */
+  setError(error: string | null): void {
+    this.patch({ error, loading: false });
+  }
+
+  /** Resets the store back to its initial state. */
+  reset(): void {
+    this.state.set(initialState);
+  }
+
+  // Immutable partial update: never mutate the previous state object in place.
+  private patch(partial: Partial<<%= classify(name) %>State>): void {
+    this.state.update((current) => ({ ...current, ...partial }));
+  }
+}

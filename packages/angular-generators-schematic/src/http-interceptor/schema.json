@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "$id": "HttpInterceptorSchema",
+  "title": "HTTP Interceptor Schema",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre del interceptor (ej. 'auth' genera authInterceptor en auth.interceptor.ts).",
+      "$default": {
+        "$source": "argv",
+        "index": 0
+      },
+      "x-prompt": "¿Cómo se llama el interceptor?"
+    },
+    "path": {
+      "type": "string",
+      "default": "src/app",
+      "description": "Carpeta donde generar el interceptor, relativa a la raíz del proyecto."
+    },
+    "retries": {
+      "type": "number",
+      "default": 2,
+      "description": "Cantidad de reintentos ante errores transitorios (5xx / red) antes de propagar el error."
+    }
+  },
+  "required": ["name"]
+}

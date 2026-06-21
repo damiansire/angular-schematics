@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "$id": "SmartDumbSchema",
+  "title": "Smart/Dumb Component Pair Schema",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre base del par (ej. 'user-list' genera UserListContainerComponent + UserListComponent).",
+      "$default": {
+        "$source": "argv",
+        "index": 0
+      },
+      "x-prompt": "¿Cómo se llama el par de componentes?"
+    },
+    "path": {
+      "type": "string",
+      "default": "src/app",
+      "description": "Carpeta donde generar el par, relativa a la raíz del proyecto."
+    },
+    "prefix": {
+      "type": "string",
+      "default": "app",
+      "description": "Prefijo de los selectores (default 'app')."
+    }
+  },
+  "required": ["name"]
+}

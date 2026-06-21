@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["es2018", "dom"],
+    "target": "es6",
+    "outDir": "./dist",
+    "rootDir": "src/",
+    "noEmitOnError": true,
+    "skipDefaultLibCheck": true,
+    "types": ["jasmine", "node"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/*/files/**/*", "node_modules", "dist"]
+}

@@ -1,0 +1,37 @@
+import { <%= classify(name) %>Store } from './<%= dasherize(name) %>.store';
+
+describe('<%= classify(name) %>Store', () => {
+  let store: <%= classify(name) %>Store;
+
+  beforeEach(() => {
+    store = new <%= classify(name) %>Store();
+  });
+
+  it('starts empty and not loading', () => {
+    expect(store.items()).toEqual([]);
+    expect(store.loading()).toBe(false);
+    expect(store.count()).toBe(0);
+  });
+
+  it('setItems replaces the list and clears the error', () => {
+    store.setError('boom');
+    store.setItems([1 as unknown as <%= entity %>]);
+    expect(store.count()).toBe(1);
+    expect(store.error()).toBeNull();
+  });
+
+  it('addItem appends immutably', () => {
+    const before = store.items();
+    store.addItem(1 as unknown as <%= entity %>);
+    expect(store.count()).toBe(1);
+    expect(store.items()).not.toBe(before);
+  });
+
+  it('reset restores the initial state', () => {
+    store.addItem(1 as unknown as <%= entity %>);
+    store.setLoading(true);
+    store.reset();
+    expect(store.count()).toBe(0);
+    expect(store.loading()).toBe(false);
+  });
+});

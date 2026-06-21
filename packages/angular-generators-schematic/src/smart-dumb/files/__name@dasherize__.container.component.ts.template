@@ -1,0 +1,33 @@
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { <%= classify(name) %>Component } from './<%= dasherize(name) %>.component';
+
+/**
+ * <%= classify(name) %>ContainerComponent — container (smart).
+ *
+ * Owns the state (here as signals; swap in a store/service as needed), wires it
+ * into the presentational <%= classify(name) %>Component via inputs, and reacts
+ * to its outputs.
+ */
+@Component({
+  selector: '<%= prefix %>-<%= dasherize(name) %>-container',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [<%= classify(name) %>Component],
+  template: `
+    <<%= prefix %>-<%= dasherize(name) %>
+      [items]="items()"
+      [loading]="loading()"
+      (selected)="onSelected($event)"
+    />
+  `,
+})
+export class <%= classify(name) %>ContainerComponent {
+  protected readonly items = signal<unknown[]>([]);
+  protected readonly loading = signal(false);
+
+  /** Handles the presentational component's `selected` output. */
+  onSelected(item: unknown): void {
+    // TODO: dispatch to a store / call a service / navigate, etc.
+    console.log('<%= classify(name) %> selected', item);
+  }
+}
