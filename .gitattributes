@@ -1,0 +1,14 @@
+# Normaliza los finales de línea: el repo guarda LF, el checkout respeta el SO.
+* text=auto eol=lf
+
+# Archivos binarios: nunca tocar.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Plantillas de schematics: se copian verbatim, conservar LF.
+*.template text eol=lf
