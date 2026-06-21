@@ -9,6 +9,13 @@
     "type": "git",
     "url": "git+https://github.com/damiansire/angular-schematics.git"
   },
+  "keywords": [
+    "angular",
+    "schematics",
+    "migration",
+    "codemod",
+    "monorepo"
+  ],
   "workspaces": [
     "packages/*"
   ],
@@ -19,12 +26,19 @@
     "build": "npm run build -w angular-inline-migration-schematic",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "changeset": "changeset",
     "version": "changeset version",
     "publish:dist": "npm run build -w angular-inline-migration-schematic && npm publish ./packages/angular-inline-migration-schematic/dist"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
-    "typescript": "^5.8.3"
+    "@eslint/js": "^9.13.0",
+    "eslint": "^9.13.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.13.0"
   }
 }
