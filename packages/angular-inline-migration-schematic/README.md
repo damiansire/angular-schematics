@@ -142,11 +142,18 @@ publishing the repository root would ship a package where that path does not
 resolve (there is no `collection.json` at the root; it lives in `src/` and is
 only copied to `dist/` by the build).
 
-To publish, build first and then publish the `dist/` directory:
+Versioning and the changelog are managed with
+[Changesets](https://github.com/changesets/changesets) from the monorepo root
+(see the root README). The verified publish flow, after the version has been
+bumped, is to build and then publish the `dist/` directory:
+
+```bash
+npm run publish:dist   # = build + npm publish ./packages/.../dist
+```
+
+which is equivalent to:
 
 ```bash
 npm run build
 npm publish ./dist
 ```
-
-That's it!

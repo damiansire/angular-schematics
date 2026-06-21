@@ -17,9 +17,14 @@
   },
   "scripts": {
     "build": "npm run build -w angular-inline-migration-schematic",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "publish:dist": "npm run build -w angular-inline-migration-schematic && npm publish ./packages/angular-inline-migration-schematic/dist"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.0",
     "typescript": "^5.8.3"
   }
 }

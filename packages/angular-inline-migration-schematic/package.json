@@ -4,6 +4,7 @@
   "description": "An Angular schematic that migrates inline component templates and styles into external .html and .scss files.",
   "scripts": {
     "build": "tsc -p tsconfig.json && npm run copy-root-files && npm run copy-src-files",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "copy-root-files": "copyfiles package.json README.md dist && copyfiles -f ../../LICENSE dist",
     "copy-src-files": "copyfiles -u 1 src/**/*.json src/**/files/* src/**/*.template dist",
     "test": "npm run build && jasmine \"dist/**/*_spec.js\""

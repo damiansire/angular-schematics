@@ -5,6 +5,7 @@
     "moduleResolution": "node",
     "declaration": true,
     "sourceMap": true,
+    "strict": true,
     "strictNullChecks": true,
     "strictFunctionTypes": true,
     "strictBindCallApply": true,

@@ -24,3 +24,20 @@ npm test           # corre los tests de cada paquete
 
 Para trabajar sobre un paquete puntual, usá `-w <nombre>`, por ejemplo
 `npm run build -w angular-inline-migration-schematic`.
+
+## Versionado y release
+
+El versionado y el changelog se gestionan con
+[Changesets](https://github.com/changesets/changesets):
+
+```bash
+npm run changeset   # describir el cambio (genera un .md en .changeset/)
+npm run version     # consume los changesets: bump de versión + CHANGELOG
+npm run publish:dist  # build + npm publish del dist/ del paquete
+```
+
+En CI, el workflow `release` (`.github/workflows/release.yml`) automatiza el
+flujo: al mergear a `main` abre/actualiza un PR "Version Packages" con los
+bumps, y cuando ese PR se mergea publica a npm desde `dist/`. Requiere el secret
+`NPM_TOKEN`. El workflow `ci` corre typecheck + build + tests (Node 18/20/22) en
+cada PR.
