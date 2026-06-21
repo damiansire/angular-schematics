@@ -4,7 +4,7 @@ This Angular schematic automates the process of migrating inline `template` and 
 
 ## What it Does
 
-The schematic (`inline-template-schematic:inline-migration`, alias `mt`) performs the following actions in your Angular project:
+The schematic (`angular-inline-migration-schematic:inline-migration`, alias `mt`) performs the following actions in your Angular project:
 
 1.  **Finds Components:** It traverses all `.component.ts` files within the `src/` directory.
 2.  **Identifies Inline Templates:** If a component has a `template` property but no `templateUrl`:
@@ -20,27 +20,31 @@ The schematic (`inline-template-schematic:inline-migration`, alias `mt`) perform
 
 ## Usage in a Project
 
-To use this schematic in your Angular project:
+> **Status: not yet published to npm.** This package is **not** available via
+> `npm install` yet. To try it today, use the local-link workflow described in
+> [Schematic Development](#schematic-development). The `npm install` steps below
+> will work once the package is published under the name
+> `angular-inline-migration-schematic`.
 
-1.  **Installation (If published on npm):**
+To use this schematic in your Angular project (once published):
+
+1.  **Installation (after the package is published on npm):**
 
     ```bash
-    npm install --save-dev your-schematic-package
-    # Or if it's a global or local dev dependency without a package:
-    # Ensure it's accessible (see Development section)
+    npm install --save-dev angular-inline-migration-schematic
     ```
 
 2.  **Execution:**
     Navigate to the root of your Angular project and run:
 
     ```bash
-    ng generate inline-template-schematic:inline-migration
+    ng generate angular-inline-migration-schematic:inline-migration
     ```
 
     Or using the `mt` alias (short form):
 
     ```bash
-    ng g inline-template-schematic:mt
+    ng g angular-inline-migration-schematic:mt
     ```
 
     The schematic will analyze your project and apply the necessary migrations. Review the generated changes before committing them.
@@ -54,13 +58,13 @@ To use this schematic in your Angular project:
 
 ```bash
 # Default (safe): skip components whose destination already exists
-ng g inline-template-schematic:inline-migration
+ng g angular-inline-migration-schematic:inline-migration
 
 # Replace existing destination files with the inline content
-ng g inline-template-schematic:inline-migration --on-conflict overwrite
+ng g angular-inline-migration-schematic:inline-migration --on-conflict overwrite
 
 # Keep both: write the inline content to a suffixed file
-ng g inline-template-schematic:inline-migration --on-conflict suffix
+ng g angular-inline-migration-schematic:inline-migration --on-conflict suffix
 ```
 
 ## Schematic Development
@@ -88,25 +92,24 @@ If you are modifying or developing this schematic locally, follow these steps to
 3.  **Use the Link in the Test Project:**
 
     - Navigate to the root directory of the _Angular project where you want to test_ the schematic.
-    - Run the `npm link` command followed by the package name of your schematic (the name in the schematic's `package.json`, e.g., `inline-template-schematic` if that's the name):
+    - Run the `npm link` command followed by the package name of your schematic (the name in the schematic's `package.json`, i.e., `angular-inline-migration-schematic`):
       ```bash
-      npm link inline-template-schematic
+      npm link angular-inline-migration-schematic
       ```
-      (Replace `inline-template-schematic` with the actual name of your package).
       This creates a folder in the test project's `node_modules` that points directly to your local schematic source code.
 
 4.  **Run the Local Schematic:**
     Now, inside the test project, you can run the schematic as you normally would:
 
     ```bash
-    ng g inline-template-schematic:inline-migration
+    ng g angular-inline-migration-schematic:inline-migration
     ```
 
     Angular will find and execute the linked local version of your schematic.
 
 5.  **Unlink (Optional):**
     When you're finished testing, you can unlink the packages:
-    - In the _test project_: `npm unlink inline-template-schematic` (or `npm uninstall inline-template-schematic`)
+    - In the _test project_: `npm unlink angular-inline-migration-schematic` (or `npm uninstall angular-inline-migration-schematic`)
     - In the _schematic's project_: `npm unlink`
 
 This workflow allows you to quickly test changes to your schematic without needing to publish it to npm each time.

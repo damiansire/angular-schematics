@@ -16,7 +16,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "npm run build -w inline-template-schematic",
+    "build": "npm run build -w angular-inline-migration-schematic",
     "test": "npm run test --workspaces --if-present"
   },
   "devDependencies": {

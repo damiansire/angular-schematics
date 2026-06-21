@@ -1,5 +1,5 @@
 {
-  "name": "inline-template-schematic",
+  "name": "angular-inline-migration-schematic",
   "version": "0.1.0",
   "description": "An Angular schematic that migrates inline component templates and styles into external .html and .scss files.",
   "scripts": {
