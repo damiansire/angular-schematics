@@ -32,6 +32,9 @@
     "@angular-devkit/core": "^19.2.7",
     "@angular-devkit/schematics": "^19.2.7"
   },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
   "devDependencies": {
     "@types/jasmine": "~5.1.0",
     "@types/node": "^18.18.0",
