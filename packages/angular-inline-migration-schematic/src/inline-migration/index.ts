@@ -226,6 +226,11 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
             return;
           }
 
+          // Tracks whether the template migration actually rewrote the .ts. Only
+          // then are the original offsets stale and a re-parse for the styles
+          // pass required; otherwise we reuse the source we already parsed.
+          let templateMutated = false;
+
           // Handle template migration
           const hasTemplateUrl = componentDecorator.properties.some(
             (prop) =>
@@ -236,7 +241,9 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
 
           if (!hasTemplateUrl) {
             const templateContent = getDecoratorPropertyValue(componentDecorator, 'template');
-            if (templateContent !== undefined) {
+            // Only a static string template can be externalized. An array shape
+            // is never valid for `template`, and `typeof` narrows away the cast.
+            if (typeof templateContent === 'string' && templateContent.trim() !== '') {
               const componentDir = dirname(filePath);
               const componentBaseName = basename(filePath, '.ts');
               const htmlFileName = `${componentBaseName}.html`;
@@ -249,7 +256,7 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
                 context,
                 componentDir,
                 htmlFileName,
-                templateContent as string,
+                templateContent,
                 onConflict,
                 filePath,
                 'template',
@@ -258,9 +265,9 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
               const relativeHtmlPath = `./${resolution.fileName}`;
               const targetHtmlPath = normalize(join(componentDir, resolution.fileName));
               if (resolution.action === 'create') {
-                tree.create(targetHtmlPath, templateContent as string);
+                tree.create(targetHtmlPath, templateContent);
               } else if (resolution.action === 'overwrite') {
-                tree.overwrite(targetHtmlPath, templateContent as string);
+                tree.overwrite(targetHtmlPath, templateContent);
               }
               // 'reuse': destination already holds the right content; 'skip': handled below.
 
@@ -297,6 +304,7 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
                     : `,\n${indent}templateUrl: '${relativeHtmlPath}'`;
                   recorder.insertLeft(removalStart, textToInsert);
                   tree.commitUpdate(recorder);
+                  templateMutated = true;
                 } else {
                   context.logger.warn(
                     `  ⚠️ Skipping template update for ${filePath}: Invalid removal range`,
@@ -307,23 +315,32 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
           }
 
           // Handle styles migration.
-          // Re-read and re-parse the file: the template migration above may have
-          // committed changes that shifted the file length, leaving any offsets
-          // taken from the original sourceFile stale. Working from the current
-          // content guarantees the styles removal range is correct.
-          const stylesFileBuffer = tree.read(filePath);
-          if (!stylesFileBuffer) {
-            context.logger.warn(`  ⚠️ Could not re-read file for styles migration: ${filePath}`);
-            return;
+          // The styles pass needs offsets valid against the file's *current*
+          // content. The template migration above only rewrites the .ts when it
+          // commits an update; if it did, re-read and re-parse so the styles
+          // removal range is correct. If it did NOT mutate the file, the source
+          // we already parsed is still accurate, so we reuse it and skip a second
+          // read + parse on the hot path.
+          let stylesContentSource: string;
+          let stylesComponentDecorator: ts.ObjectLiteralExpression | null;
+          if (templateMutated) {
+            const stylesFileBuffer = tree.read(filePath);
+            if (!stylesFileBuffer) {
+              context.logger.warn(`  ⚠️ Could not re-read file for styles migration: ${filePath}`);
+              return;
+            }
+            stylesContentSource = stylesFileBuffer.toString('utf-8');
+            const stylesSourceFile = ts.createSourceFile(
+              filePath,
+              stylesContentSource,
+              ts.ScriptTarget.Latest,
+              true,
+            );
+            stylesComponentDecorator = findComponentDecorator(stylesSourceFile);
+          } else {
+            stylesContentSource = content;
+            stylesComponentDecorator = componentDecorator;
           }
-          const stylesContentSource = stylesFileBuffer.toString('utf-8');
-          const stylesSourceFile = ts.createSourceFile(
-            filePath,
-            stylesContentSource,
-            ts.ScriptTarget.Latest,
-            true,
-          );
-          const stylesComponentDecorator = findComponentDecorator(stylesSourceFile);
           if (!stylesComponentDecorator) {
             return;
           }
@@ -351,6 +368,16 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
               // created / overwritten / suffixed per the policy.
               const styleValues = Array.isArray(stylesContent) ? stylesContent : [stylesContent];
 
+              // Guard (empty-styles): `styles: []` (or a now-empty array) has
+              // nothing to externalize. Emitting `styleUrls: []` would be churn
+              // with no .scss behind it, so leave the decorator untouched.
+              const isEmptyStyles = styleValues.length === 0;
+              if (isEmptyStyles) {
+                context.logger.warn(
+                  `  ⚠️ Skipping styles migration for ${filePath}: the inline "styles" is empty; nothing to externalize.`,
+                );
+              }
+
               // Guard (array-styles-no-string): a non-literal entry (e.g.
               // styles: [BASE_STYLES]) can't be resolved statically. Emitting an
               // empty .scss would silently drop the real style, so treat it as a
@@ -361,29 +388,35 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
                   `  ⚠️ Skipping styles migration for ${filePath}: a styles entry is not a static string literal (e.g. a referenced constant) and cannot be externalized.`,
                 );
               }
-              const styleResolutions = hasNonLiteral
-                ? []
-                : (styleValues as string[]).map((style, index) => {
-                    const scssFileName =
-                      index === 0
-                        ? `${componentBaseName}.scss`
-                        : `${componentBaseName}-${index + 1}.scss`;
-                    return {
-                      style,
-                      resolution: resolveConflict(
-                        tree,
-                        context,
-                        componentDir,
-                        scssFileName,
+              // After the guard above every remaining entry is a string; the
+              // type-guarded filter narrows the array without a blind `as` cast.
+              const literalStyles = styleValues.filter((s): s is string => s !== null);
+              const styleResolutions =
+                isEmptyStyles || hasNonLiteral
+                  ? []
+                  : literalStyles.map((style, index) => {
+                      const scssFileName =
+                        index === 0
+                          ? `${componentBaseName}.scss`
+                          : `${componentBaseName}-${index + 1}.scss`;
+                      return {
                         style,
-                        onConflict,
-                        filePath,
-                        'styles',
-                      ),
-                    };
-                  });
+                        resolution: resolveConflict(
+                          tree,
+                          context,
+                          componentDir,
+                          scssFileName,
+                          style,
+                          onConflict,
+                          filePath,
+                          'styles',
+                        ),
+                      };
+                    });
               const stylesSkip =
-                hasNonLiteral || styleResolutions.some((r) => r.resolution.action === 'skip');
+                isEmptyStyles ||
+                hasNonLiteral ||
+                styleResolutions.some((r) => r.resolution.action === 'skip');
 
               if (stylesSkip) {
                 // Per-element warnings already emitted by resolveConflict; leave inline intact.

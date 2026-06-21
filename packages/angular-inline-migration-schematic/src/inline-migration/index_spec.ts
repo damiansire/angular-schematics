@@ -230,6 +230,39 @@ describe('inline-migration schematic', () => {
     expect(parseErrorCount(out)).toBe(0);
   });
 
+  it('leaves an empty inline template untouched (no empty .html, no templateUrl)', async () => {
+    const result = await migrate({
+      [COMPONENT]: componentFile(`
+  selector: 'app-foo',
+  template: '',
+`),
+    });
+
+    const out = result.readContent(COMPONENT);
+    // An empty template has nothing to externalize: don't emit an empty .html
+    // nor rewrite the decorator to point at one.
+    expect(result.files).not.toContain('/src/app/foo.component.html');
+    expect(out).toContain("template: ''");
+    expect(out).not.toContain('templateUrl');
+    expect(parseErrorCount(out)).toBe(0);
+  });
+
+  it('leaves an empty inline styles array untouched (no empty styleUrls)', async () => {
+    const result = await migrate({
+      [COMPONENT]: componentFile(`
+  selector: 'app-foo',
+  styles: [],
+`),
+    });
+
+    const out = result.readContent(COMPONENT);
+    // `styles: []` has nothing to externalize: don't churn it into `styleUrls: []`.
+    expect(result.files).not.toContain('/src/app/foo.component.scss');
+    expect(out).toContain('styles: []');
+    expect(out).not.toContain('styleUrls');
+    expect(parseErrorCount(out)).toBe(0);
+  });
+
   it('matches the existing decorator indentation when inserting (not hardcoded 2 spaces)', async () => {
     const source = `import { Component } from '@angular/core';
 
