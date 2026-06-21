@@ -1,16 +1,5 @@
-import {
-  apply,
-  applyTemplates,
-  mergeWith,
-  move,
-  Rule,
-  SchematicContext,
-  SchematicsException,
-  Tree,
-  url,
-} from '@angular-devkit/schematics';
-import { strings } from '@angular-devkit/core';
-import { normalize } from 'path';
+import { Rule, SchematicContext, SchematicsException, Tree } from '@angular-devkit/schematics';
+import { scaffold } from '../utils/scaffold';
 
 export interface SignalStoreOptions {
   /** Store name (e.g. 'cart' -> CartStore in cart.store.ts). */
@@ -49,15 +38,6 @@ export function signalStore(options: SignalStoreOptions): Rule {
     }
     const entity = rawEntity.length > 0 ? rawEntity : 'unknown';
 
-    const templateSource = apply(url('./files'), [
-      applyTemplates({
-        ...strings,
-        name: options.name,
-        entity,
-      }),
-      move(normalize(targetPath)),
-    ]);
-
-    return mergeWith(templateSource);
+    return scaffold('./files', { name: options.name, entity }, targetPath);
   };
 }

@@ -37,6 +37,8 @@
     "smart-dumb/**/*.d.ts",
     "smart-dumb/**/*.json",
     "smart-dumb/**/files/**",
+    "utils/**/*.js",
+    "utils/**/*.d.ts",
     "!**/*_spec.*"
   ],
   "dependencies": {

@@ -1,15 +1,7 @@
-import {
-  apply,
-  applyTemplates,
-  mergeWith,
-  move,
-  Rule,
-  SchematicContext,
-  Tree,
-  url,
-} from '@angular-devkit/schematics';
+import { Rule, SchematicContext, Tree } from '@angular-devkit/schematics';
 import { strings } from '@angular-devkit/core';
 import { join, normalize } from 'path';
+import { scaffold } from '../utils/scaffold';
 
 export interface SmartDumbOptions {
   /** Base name of the pair (e.g. 'user-list'). */
@@ -34,15 +26,6 @@ export function smartDumb(options: SmartDumbOptions): Rule {
     // Group the pair in a dedicated folder so the two components stay together.
     const targetPath = normalize(join(basePath, strings.dasherize(options.name)));
 
-    const templateSource = apply(url('./files'), [
-      applyTemplates({
-        ...strings,
-        name: options.name,
-        prefix,
-      }),
-      move(targetPath),
-    ]);
-
-    return mergeWith(templateSource);
+    return scaffold('./files', { name: options.name, prefix }, targetPath);
   };
 }

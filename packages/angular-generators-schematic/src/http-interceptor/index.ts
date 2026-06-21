@@ -1,15 +1,5 @@
-import {
-  apply,
-  applyTemplates,
-  mergeWith,
-  move,
-  Rule,
-  SchematicContext,
-  Tree,
-  url,
-} from '@angular-devkit/schematics';
-import { strings } from '@angular-devkit/core';
-import { normalize } from 'path';
+import { Rule, SchematicContext, Tree } from '@angular-devkit/schematics';
+import { scaffold } from '../utils/scaffold';
 
 export interface HttpInterceptorOptions {
   /** Interceptor name (e.g. 'auth' -> authInterceptor in auth.interceptor.ts). */
@@ -34,15 +24,6 @@ export function httpInterceptor(options: HttpInterceptorOptions): Rule {
       ? Math.max(0, Math.floor(options.retries as number))
       : 2;
 
-    const templateSource = apply(url('./files'), [
-      applyTemplates({
-        ...strings,
-        name: options.name,
-        retries,
-      }),
-      move(normalize(targetPath)),
-    ]);
-
-    return mergeWith(templateSource);
+    return scaffold('./files', { name: options.name, retries }, targetPath);
   };
 }

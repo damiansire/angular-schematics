@@ -30,7 +30,6 @@
     "!inline-migration/**/*_spec.*"
   ],
   "dependencies": {
-    "@angular-devkit/core": "^19.2.7",
     "@angular-devkit/schematics": "^19.2.7"
   },
   "peerDependencies": {
