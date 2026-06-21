@@ -23,7 +23,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "npm run build -w angular-inline-migration-schematic",
+    "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
@@ -31,7 +31,7 @@
     "format:check": "prettier --check .",
     "changeset": "changeset",
     "version": "changeset version",
-    "publish:dist": "npm run build -w angular-inline-migration-schematic && npm publish ./packages/angular-inline-migration-schematic/dist"
+    "publish:dist": "npm run build --workspaces --if-present && node scripts/publish-dist.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",

@@ -20,6 +20,7 @@
     },
     "entity": {
       "type": "string",
+      "pattern": "^[A-Za-z_$][A-Za-z0-9_$.<>\\[\\], ]*$",
       "description": "Tipo TypeScript de la entidad que mantiene el estado (ej. 'Product'). Si se omite, se usa 'unknown'."
     }
   },

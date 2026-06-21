@@ -276,7 +276,7 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
 
                 // Calculate safe removal range
                 let removalStart = Math.max(0, templatePropertyNode.getFullStart());
-                let removalEnd = Math.min(fileLength, templatePropertyNode.getEnd());
+                const removalEnd = Math.min(fileLength, templatePropertyNode.getEnd());
 
                 // Check for comma before (only relevant when not the first property)
                 if (!isFirstProperty) {
@@ -399,7 +399,7 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
 
                 // Calculate safe removal range
                 let removalStart = Math.max(0, stylesPropertyNode.getFullStart());
-                let removalEnd = Math.min(fileLength, stylesPropertyNode.getEnd());
+                const removalEnd = Math.min(fileLength, stylesPropertyNode.getEnd());
 
                 // Check for comma before (only relevant when not the first property)
                 if (!isFirstProperty) {

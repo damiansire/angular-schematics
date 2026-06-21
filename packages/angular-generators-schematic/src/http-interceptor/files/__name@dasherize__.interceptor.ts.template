@@ -1,5 +1,4 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
 import { catchError, retry, throwError, timer } from 'rxjs';
 
 /** How many times to retry a transient (5xx / network) failure. */
@@ -17,8 +16,9 @@ function isTransient(error: HttpErrorResponse): boolean {
  *   provideHttpClient(withInterceptors([<%= camelize(name) %>Interceptor]))
  */
 export const <%= camelize(name) %>Interceptor: HttpInterceptorFn = (req, next) => {
-  // `inject` works here because functional interceptors run inside the
-  // injection context. Pull in any dependency (auth token, logger, ...) here.
+  // Functional interceptors run inside the injection context, so Angular's
+  // inject() is available here to pull in any dependency (auth token,
+  // logger, ...) — import it from '@angular/core' when you need it.
 
   return next(req).pipe(
     retry({
@@ -33,9 +33,12 @@ export const <%= camelize(name) %>Interceptor: HttpInterceptorFn = (req, next) =
       },
     }),
     catchError((error: HttpErrorResponse) => {
+      // status === 0 means the request never reached the server (network
+      // failure, CORS, offline). This is the modern check with
+      // `provideHttpClient(withFetch())`, where `ErrorEvent` no longer applies.
       const message =
-        error.error instanceof ErrorEvent
-          ? `Client error: ${error.error.message}`
+        error.status === 0
+          ? `Network/client error: ${error.error?.message ?? error.message}`
           : `Server returned ${error.status} for ${req.method} ${req.urlWithParams}`;
 
       // Centralize logging / user notification here.

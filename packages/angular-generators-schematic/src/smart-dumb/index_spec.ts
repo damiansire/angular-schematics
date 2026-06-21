@@ -1,11 +1,19 @@
 import { SchematicTestRunner, UnitTestTree } from '@angular-devkit/schematics/testing';
 import { join } from 'path';
+import * as ts from 'typescript';
 
 const collectionPath = join(__dirname, '..', 'collection.json');
 
 async function run(options: Record<string, unknown>): Promise<UnitTestTree> {
   const runner = new SchematicTestRunner('schematics', collectionPath);
   return runner.runSchematic('smart-dumb', options);
+}
+
+/** Number of syntactic parse errors in a TS source (0 = it compiles cleanly). */
+function parseErrorCount(source: string): number {
+  const sourceFile = ts.createSourceFile('check.ts', source, ts.ScriptTarget.Latest, true);
+  return (sourceFile as unknown as { parseDiagnostics: ReadonlyArray<unknown> }).parseDiagnostics
+    .length;
 }
 
 describe('smart-dumb schematic', () => {
@@ -50,5 +58,29 @@ describe('smart-dumb schematic', () => {
     const tree = await run({ name: 'user-list', path: 'src/app/features' });
 
     expect(tree.files).toContain('/src/app/features/user-list/user-list.component.ts');
+  });
+
+  it('emits both components parsing without syntax errors', async () => {
+    const tree = await run({ name: 'user-list' });
+
+    expect(parseErrorCount(tree.readContent('/src/app/user-list/user-list.component.ts'))).toBe(0);
+    expect(
+      parseErrorCount(tree.readContent('/src/app/user-list/user-list.container.component.ts')),
+    ).toBe(0);
+  });
+
+  it('renders items as keyboard-accessible buttons, not click-only <li>', async () => {
+    const tree = await run({ name: 'user-list' });
+    const out = tree.readContent('/src/app/user-list/user-list.component.ts');
+
+    expect(out).toContain('<button type="button" (click)="selected.emit(item)">');
+    expect(out).not.toContain('<li (click)=');
+  });
+
+  it('provides an @empty branch for the items list', async () => {
+    const tree = await run({ name: 'user-list' });
+    const out = tree.readContent('/src/app/user-list/user-list.component.ts');
+
+    expect(out).toContain('@empty');
   });
 });

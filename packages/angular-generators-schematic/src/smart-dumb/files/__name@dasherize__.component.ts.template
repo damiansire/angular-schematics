@@ -18,7 +18,13 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
       } @else {
         <ul>
           @for (item of items(); track item) {
-            <li (click)="selected.emit(item)">{{ item }}</li>
+            <li>
+              <button type="button" (click)="selected.emit(item)">
+                {{ item }}
+              </button>
+            </li>
+          } @empty {
+            <li>No items yet.</li>
           }
         </ul>
       }
