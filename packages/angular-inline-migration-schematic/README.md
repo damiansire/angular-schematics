@@ -4,7 +4,7 @@ This Angular schematic automates the process of migrating inline `template` and 
 
 ## What it Does
 
-The schematic (`inline-template-schematic:mt`) performs the following actions in your Angular project:
+The schematic (`inline-template-schematic:inline-migration`, alias `mt`) performs the following actions in your Angular project:
 
 1.  **Finds Components:** It traverses all `.component.ts` files within the `src/` directory.
 2.  **Identifies Inline Templates:** If a component has a `template` property but no `templateUrl`:
@@ -13,7 +13,7 @@ The schematic (`inline-template-schematic:mt`) performs the following actions in
     - Replaces the `template: '...'` property with `templateUrl: './my-component.component.html'` in the `.ts` file.
 3.  **Identifies Inline Styles:** If a component has a `styles` property but no `styleUrls`:
     - Extracts the content of `styles`. This can be a single string or an array of strings.
-    - For each style string, it creates a new `.scss` file (e.g., `my-component.component.scss`, `my-component-2.scss`, etc.) in the same directory with that content.
+    - For each style string, it creates a new `.scss` file (e.g., `my-component.component.scss`, `my-component.component-2.scss`, etc.) in the same directory with that content.
     - Replaces the `styles: [...]` property with `styleUrls: ['./my-component.component.scss', ...]` in the `.ts` file.
 4.  **Comma Handling:** Attempts to automatically adjust commas when replacing properties in the decorator.
 5.  **Safety (no silent data loss):** When a destination `.html`/`.scss` already exists with **different** content, the schematic does **not** silently drop the inline source. Its behaviour is controlled by the [`onConflict`](#options) option (default `skip`): it warns and leaves the component untouched. Use `overwrite` or `suffix` to opt into a different policy.
@@ -34,10 +34,10 @@ To use this schematic in your Angular project:
     Navigate to the root of your Angular project and run:
 
     ```bash
-    ng generate inline-template-schematic:mt
+    ng generate inline-template-schematic:inline-migration
     ```
 
-    Or the short form:
+    Or using the `mt` alias (short form):
 
     ```bash
     ng g inline-template-schematic:mt
@@ -53,13 +53,13 @@ To use this schematic in your Angular project:
 
 ```bash
 # Default (safe): skip components whose destination already exists
-ng g inline-template-schematic:mt
+ng g inline-template-schematic:inline-migration
 
 # Replace existing destination files with the inline content
-ng g inline-template-schematic:mt --on-conflict overwrite
+ng g inline-template-schematic:inline-migration --on-conflict overwrite
 
 # Keep both: write the inline content to a suffixed file
-ng g inline-template-schematic:mt --on-conflict suffix
+ng g inline-template-schematic:inline-migration --on-conflict suffix
 ```
 
 ## Schematic Development
@@ -98,7 +98,7 @@ If you are modifying or developing this schematic locally, follow these steps to
     Now, inside the test project, you can run the schematic as you normally would:
 
     ```bash
-    ng g inline-template-schematic:mt
+    ng g inline-template-schematic:inline-migration
     ```
 
     Angular will find and execute the linked local version of your schematic.
