@@ -22,7 +22,11 @@
   "license": "MIT",
   "schematics": "./collection.json",
   "files": [
-    "dist"
+    "collection.json",
+    "inline-migration/**/*.js",
+    "inline-migration/**/*.d.ts",
+    "inline-migration/**/*.json",
+    "!inline-migration/**/*_spec.*"
   ],
   "dependencies": {
     "@angular-devkit/core": "^19.2.7",
