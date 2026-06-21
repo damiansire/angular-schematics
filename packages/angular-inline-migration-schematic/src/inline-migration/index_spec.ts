@@ -183,4 +183,67 @@ describe("inline-migration schematic", () => {
 
     expect(result.readContent(COMPONENT)).toBe(original);
   });
+
+  it("scans the directory given by the path option instead of /src", async () => {
+    const result = await migrate(
+      {
+        "/projects/app/foo.component.ts": componentFile(`
+  selector: 'app-foo',
+  template: '<p>scoped</p>',
+`),
+      },
+      { path: "projects" }
+    );
+
+    expect(result.readContent("/projects/app/foo.component.html")).toBe("<p>scoped</p>");
+    expect(result.readContent("/projects/app/foo.component.ts")).toContain(
+      "templateUrl: './foo.component.html'"
+    );
+  });
+
+  it("ignores components outside the default /src path", async () => {
+    const result = await migrate({
+      "/lib/foo.component.ts": componentFile(`
+  selector: 'app-foo',
+  template: '<p>x</p>',
+`),
+    });
+
+    expect(result.files).not.toContain("/lib/foo.component.html");
+    expect(result.readContent("/lib/foo.component.ts")).toContain("template: '<p>x</p>'");
+  });
+
+  it("skips styles migration when an array entry is not a static string literal", async () => {
+    const result = await migrate({
+      [COMPONENT]: componentFile(`
+  selector: 'app-foo',
+  styles: [BASE_STYLES],
+`),
+    });
+
+    const out = result.readContent(COMPONENT);
+    // No empty .scss emitted; the real (non-resolvable) style is left inline.
+    expect(result.files).not.toContain("/src/app/foo.component.scss");
+    expect(out).toContain("styles: [BASE_STYLES]");
+    expect(out).not.toContain("styleUrls");
+    expect(parseErrorCount(out)).toBe(0);
+  });
+
+  it("matches the existing decorator indentation when inserting (not hardcoded 2 spaces)", async () => {
+    const source = `import { Component } from '@angular/core';
+
+@Component({
+    selector: 'app-foo',
+    template: '<p>indent</p>',
+})
+export class FooComponent {}
+`;
+    const result = await migrate({ [COMPONENT]: source });
+
+    const out = result.readContent(COMPONENT);
+    // The decorator uses 4-space indentation; the inserted templateUrl must too.
+    expect(out).toContain("\n    templateUrl: './foo.component.html'");
+    expect(out).not.toContain("\n  templateUrl:");
+    expect(parseErrorCount(out)).toBe(0);
+  });
 });

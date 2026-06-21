@@ -41,7 +41,7 @@ function findComponentDecorator(sourceFile: ts.SourceFile): ts.ObjectLiteralExpr
 /**
  * Gets the value of a specific property (like 'styles' or 'styleUrls') from the decorator.
  */
-function getDecoratorPropertyValue(decorator: ts.ObjectLiteralExpression, propertyName: string): string | string[] | undefined {
+function getDecoratorPropertyValue(decorator: ts.ObjectLiteralExpression, propertyName: string): string | (string | null)[] | undefined {
   const property = decorator.properties.find(
     (prop): prop is ts.PropertyAssignment =>
       ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name) && prop.name.text === propertyName
@@ -59,7 +59,8 @@ function getDecoratorPropertyValue(decorator: ts.ObjectLiteralExpression, proper
         if (ts.isStringLiteral(element) || ts.isNoSubstitutionTemplateLiteral(element)) {
           return element.text;
         }
-        return '';
+        // Non-literal entry (e.g. a referenced constant): can't resolve statically.
+        return null;
       });
     }
   }
@@ -80,6 +81,18 @@ function getDecoratorPropertyNode(
       ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name) && prop.name.text === propertyName
   );
   return property || null; // If find doesn't find it, it returns undefined, which becomes null with ||
+}
+
+/**
+ * Derives the leading indentation (spaces/tabs) of the line where `node` starts,
+ * so inserted properties match the decorator's existing indentation instead of a
+ * hardcoded 2 spaces. Falls back to two spaces.
+ */
+function getIndent(source: string, node: ts.Node): string {
+  const start = node.getStart();
+  const lineStart = source.lastIndexOf("\n", start - 1) + 1;
+  const match = source.substring(lineStart, start).match(/^[ \t]*/);
+  return match ? match[0] : "  ";
 }
 
 /**
@@ -162,18 +175,22 @@ function resolveConflict(
 export interface MigrarTemplatesOptions {
   /** Conflict policy when a destination file already exists (default 'skip'). */
   onConflict?: OnConflict;
+  /** Directory to scan for components, relative to the project root (default 'src'). */
+  path?: string;
 }
 
 export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
   const onConflict: OnConflict = options.onConflict ?? "skip";
+  // Forward-slash, leading-slash path for the in-memory Tree (no OS separators).
+  const searchPath = "/" + (options.path ?? "src").replace(/^\/+|\/+$/g, "");
 
   return (tree: Tree, context: SchematicContext): Tree => {
     context.logger.info(
-      `🚀 Starting search for components with inline templates and styles (onConflict=${onConflict})...`
+      `🚀 Starting search for components with inline templates and styles in ${searchPath} (onConflict=${onConflict})...`
     );
 
     try {
-      tree.getDir("/src").visit((filePath) => {
+      tree.getDir(searchPath).visit((filePath) => {
         try {
           if (!filePath.endsWith(".component.ts")) {
             context.logger.debug(`  ➡️ Skipping (not a .component.ts file)`);
@@ -255,9 +272,10 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
                 // Ensure we're not trying to remove beyond file bounds
                 if (removalStart < fileLength && removalEnd <= fileLength) {
                   recorder.remove(removalStart, removalEnd - removalStart);
+                  const indent = getIndent(content, templatePropertyNode);
                   const textToInsert = isFirstProperty
-                    ? `\n  templateUrl: '${relativeHtmlPath}'`
-                    : `,\n  templateUrl: '${relativeHtmlPath}'`;
+                    ? `\n${indent}templateUrl: '${relativeHtmlPath}'`
+                    : `,\n${indent}templateUrl: '${relativeHtmlPath}'`;
                   recorder.insertLeft(removalStart, textToInsert);
                   tree.commitUpdate(recorder);
                 } else {
@@ -305,18 +323,31 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
               // styles migration (inline left intact); otherwise each file is
               // created / overwritten / suffixed per the policy.
               const styleValues = Array.isArray(stylesContent) ? stylesContent : [stylesContent];
-              const styleResolutions = styleValues.map((style, index) => {
-                const scssFileName = index === 0
-                  ? `${componentBaseName}.scss`
-                  : `${componentBaseName}-${index + 1}.scss`;
-                return {
-                  style,
-                  resolution: resolveConflict(
-                    tree, context, componentDir, scssFileName, style, onConflict, filePath, "styles"
-                  ),
-                };
-              });
-              const stylesSkip = styleResolutions.some((r) => r.resolution.action === "skip");
+
+              // Guard (array-styles-no-string): a non-literal entry (e.g.
+              // styles: [BASE_STYLES]) can't be resolved statically. Emitting an
+              // empty .scss would silently drop the real style, so treat it as a
+              // skip and leave the inline styles intact.
+              const hasNonLiteral = styleValues.some((s) => s === null);
+              if (hasNonLiteral) {
+                context.logger.warn(
+                  `  ⚠️ Skipping styles migration for ${filePath}: a styles entry is not a static string literal (e.g. a referenced constant) and cannot be externalized.`
+                );
+              }
+              const styleResolutions = hasNonLiteral
+                ? []
+                : (styleValues as string[]).map((style, index) => {
+                    const scssFileName = index === 0
+                      ? `${componentBaseName}.scss`
+                      : `${componentBaseName}-${index + 1}.scss`;
+                    return {
+                      style,
+                      resolution: resolveConflict(
+                        tree, context, componentDir, scssFileName, style, onConflict, filePath, "styles"
+                      ),
+                    };
+                  });
+              const stylesSkip = hasNonLiteral || styleResolutions.some((r) => r.resolution.action === "skip");
 
               if (stylesSkip) {
                 // Per-element warnings already emitted by resolveConflict; leave inline intact.
@@ -347,7 +378,8 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
                 if (removalStart < fileLength && removalEnd <= fileLength) {
                   recorder.remove(removalStart, removalEnd - removalStart);
 
-                  const connector = isFirstProperty ? '\n  ' : ',\n  ';
+                  const indent = getIndent(stylesContentSource, stylesPropertyNode);
+                  const connector = isFirstProperty ? `\n${indent}` : `,\n${indent}`;
                   const styleUrls = styleResolutions.map(({ style, resolution }) => {
                     const target = normalize(join(componentDir, resolution.fileName));
                     if (resolution.action === "create") {

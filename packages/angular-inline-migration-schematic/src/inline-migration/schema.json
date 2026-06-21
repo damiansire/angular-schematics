@@ -4,6 +4,11 @@
     "title": "Migrar Templates Inline Schema",
     "type": "object",
     "properties": {
+        "path": {
+            "type": "string",
+            "default": "src",
+            "description": "Carpeta a escanear en busca de componentes, relativa a la raíz del proyecto (default 'src')."
+        },
         "onConflict": {
             "type": "string",
             "enum": ["skip", "overwrite", "suffix"],

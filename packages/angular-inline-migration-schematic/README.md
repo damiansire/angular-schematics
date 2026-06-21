@@ -49,6 +49,7 @@ To use this schematic in your Angular project:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
+| `path` | `string` | `src` | Directory to scan for components, relative to the project root. |
 | `onConflict` | `'skip' \| 'overwrite' \| 'suffix'` | `skip` | What to do when the destination `.html`/`.scss` already exists with **different** content. `skip`: leave the inline source intact and warn (no data loss). `overwrite`: replace the destination file with the inline content. `suffix`: write to a new, non-colliding file (e.g. `my-component.component.1.html`) and keep the existing one. |
 
 ```bash
