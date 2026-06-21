@@ -6,11 +6,16 @@
     "declaration": true,
     "sourceMap": true,
     "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
     "noImplicitAny": true,
     "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "useUnknownInCatchVariables": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   }
