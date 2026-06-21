@@ -7,9 +7,9 @@ import {
   SchematicContext,
   Tree,
   url,
-} from "@angular-devkit/schematics";
-import { strings } from "@angular-devkit/core";
-import { normalize } from "path";
+} from '@angular-devkit/schematics';
+import { strings } from '@angular-devkit/core';
+import { normalize } from 'path';
 
 export interface HttpInterceptorOptions {
   /** Interceptor name (e.g. 'auth' -> authInterceptor in auth.interceptor.ts). */
@@ -28,11 +28,13 @@ export interface HttpInterceptorOptions {
  */
 export function httpInterceptor(options: HttpInterceptorOptions): Rule {
   return (_tree: Tree, _context: SchematicContext): Rule => {
-    const targetPath = "/" + (options.path ?? "src/app").replace(/^\/+|\/+$/g, "");
+    const targetPath = '/' + (options.path ?? 'src/app').replace(/^\/+|\/+$/g, '');
     // Clamp to a sane, non-negative integer so the template never emits retry(NaN).
-    const retries = Number.isFinite(options.retries) ? Math.max(0, Math.floor(options.retries as number)) : 2;
+    const retries = Number.isFinite(options.retries)
+      ? Math.max(0, Math.floor(options.retries as number))
+      : 2;
 
-    const templateSource = apply(url("./files"), [
+    const templateSource = apply(url('./files'), [
       applyTemplates({
         ...strings,
         name: options.name,

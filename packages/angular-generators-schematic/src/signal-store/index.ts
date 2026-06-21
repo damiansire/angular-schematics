@@ -7,9 +7,9 @@ import {
   SchematicContext,
   Tree,
   url,
-} from "@angular-devkit/schematics";
-import { strings } from "@angular-devkit/core";
-import { normalize } from "path";
+} from '@angular-devkit/schematics';
+import { strings } from '@angular-devkit/core';
+import { normalize } from 'path';
 
 export interface SignalStoreOptions {
   /** Store name (e.g. 'cart' -> CartStore in cart.store.ts). */
@@ -28,10 +28,11 @@ export interface SignalStoreOptions {
  */
 export function signalStore(options: SignalStoreOptions): Rule {
   return (_tree: Tree, _context: SchematicContext): Rule => {
-    const targetPath = "/" + (options.path ?? "src/app").replace(/^\/+|\/+$/g, "");
-    const entity = options.entity && options.entity.trim().length > 0 ? options.entity.trim() : "unknown";
+    const targetPath = '/' + (options.path ?? 'src/app').replace(/^\/+|\/+$/g, '');
+    const entity =
+      options.entity && options.entity.trim().length > 0 ? options.entity.trim() : 'unknown';
 
-    const templateSource = apply(url("./files"), [
+    const templateSource = apply(url('./files'), [
       applyTemplates({
         ...strings,
         name: options.name,

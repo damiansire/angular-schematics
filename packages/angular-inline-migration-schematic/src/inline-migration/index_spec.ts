@@ -1,9 +1,9 @@
-import { Tree } from "@angular-devkit/schematics";
-import { SchematicTestRunner, UnitTestTree } from "@angular-devkit/schematics/testing";
-import { join } from "path";
-import * as ts from "typescript";
+import { Tree } from '@angular-devkit/schematics';
+import { SchematicTestRunner, UnitTestTree } from '@angular-devkit/schematics/testing';
+import { join } from 'path';
+import * as ts from 'typescript';
 
-const collectionPath = join(__dirname, "..", "collection.json");
+const collectionPath = join(__dirname, '..', 'collection.json');
 
 /**
  * Returns the number of parse errors TypeScript reports for the given source.
@@ -11,8 +11,9 @@ const collectionPath = join(__dirname, "..", "collection.json");
  * comma like `@Component({, ... })`) yields a non-zero count.
  */
 function parseErrorCount(source: string): number {
-  const sourceFile = ts.createSourceFile("check.ts", source, ts.ScriptTarget.Latest, true);
-  return (sourceFile as unknown as { parseDiagnostics: ReadonlyArray<unknown> }).parseDiagnostics.length;
+  const sourceFile = ts.createSourceFile('check.ts', source, ts.ScriptTarget.Latest, true);
+  return (sourceFile as unknown as { parseDiagnostics: ReadonlyArray<unknown> }).parseDiagnostics
+    .length;
 }
 
 function componentFile(decoratorBody: string): string {
@@ -25,20 +26,20 @@ export class FooComponent {}
 
 async function migrate(
   files: Record<string, string>,
-  options: Record<string, unknown> = {}
+  options: Record<string, unknown> = {},
 ): Promise<UnitTestTree> {
-  const runner = new SchematicTestRunner("inline-migration", collectionPath);
+  const runner = new SchematicTestRunner('inline-migration', collectionPath);
   const tree = Tree.empty();
   for (const [path, content] of Object.entries(files)) {
     tree.create(path, content);
   }
-  return runner.runSchematic("inline-migration", options, tree);
+  return runner.runSchematic('inline-migration', options, tree);
 }
 
-const COMPONENT = "/src/app/foo.component.ts";
+const COMPONENT = '/src/app/foo.component.ts';
 
-describe("inline-migration schematic", () => {
-  it("migrates an inline template to an external .html file", async () => {
+describe('inline-migration schematic', () => {
+  it('migrates an inline template to an external .html file', async () => {
     const result = await migrate({
       [COMPONENT]: componentFile(`
   selector: 'app-foo',
@@ -47,14 +48,14 @@ describe("inline-migration schematic", () => {
     });
 
     const out = result.readContent(COMPONENT);
-    expect(result.files).toContain("/src/app/foo.component.html");
-    expect(result.readContent("/src/app/foo.component.html")).toBe("<p>hello</p>");
+    expect(result.files).toContain('/src/app/foo.component.html');
+    expect(result.readContent('/src/app/foo.component.html')).toBe('<p>hello</p>');
     expect(out).toContain("templateUrl: './foo.component.html'");
-    expect(out).not.toContain("template:");
+    expect(out).not.toContain('template:');
     expect(parseErrorCount(out)).toBe(0);
   });
 
-  it("migrates an inline styles string to an external .scss file", async () => {
+  it('migrates an inline styles string to an external .scss file', async () => {
     const result = await migrate({
       [COMPONENT]: componentFile(`
   selector: 'app-foo',
@@ -63,14 +64,14 @@ describe("inline-migration schematic", () => {
     });
 
     const out = result.readContent(COMPONENT);
-    expect(result.files).toContain("/src/app/foo.component.scss");
-    expect(result.readContent("/src/app/foo.component.scss")).toBe("p { color: red; }");
+    expect(result.files).toContain('/src/app/foo.component.scss');
+    expect(result.readContent('/src/app/foo.component.scss')).toBe('p { color: red; }');
     expect(out).toContain("styleUrls: ['./foo.component.scss']");
-    expect(out).not.toContain("styles:");
+    expect(out).not.toContain('styles:');
     expect(parseErrorCount(out)).toBe(0);
   });
 
-  it("migrates an inline styles array into one .scss file per entry", async () => {
+  it('migrates an inline styles array into one .scss file per entry', async () => {
     const result = await migrate({
       [COMPONENT]: componentFile(`
   selector: 'app-foo',
@@ -79,15 +80,15 @@ describe("inline-migration schematic", () => {
     });
 
     const out = result.readContent(COMPONENT);
-    expect(result.files).toContain("/src/app/foo.component.scss");
-    expect(result.files).toContain("/src/app/foo.component-2.scss");
-    expect(result.readContent("/src/app/foo.component.scss")).toBe("a { color: red; }");
-    expect(result.readContent("/src/app/foo.component-2.scss")).toBe("b { color: blue; }");
+    expect(result.files).toContain('/src/app/foo.component.scss');
+    expect(result.files).toContain('/src/app/foo.component-2.scss');
+    expect(result.readContent('/src/app/foo.component.scss')).toBe('a { color: red; }');
+    expect(result.readContent('/src/app/foo.component-2.scss')).toBe('b { color: blue; }');
     expect(out).toContain("styleUrls: ['./foo.component.scss', './foo.component-2.scss']");
     expect(parseErrorCount(out)).toBe(0);
   });
 
-  it("migrates template and styles together without corrupting the file", async () => {
+  it('migrates template and styles together without corrupting the file', async () => {
     const result = await migrate({
       [COMPONENT]: componentFile(`
   selector: 'app-foo',
@@ -97,16 +98,16 @@ describe("inline-migration schematic", () => {
     });
 
     const out = result.readContent(COMPONENT);
-    expect(result.files).toContain("/src/app/foo.component.html");
-    expect(result.files).toContain("/src/app/foo.component.scss");
+    expect(result.files).toContain('/src/app/foo.component.html');
+    expect(result.files).toContain('/src/app/foo.component.scss');
     expect(out).toContain("templateUrl: './foo.component.html'");
     expect(out).toContain("styleUrls: ['./foo.component.scss']");
-    expect(out).not.toContain("template:");
-    expect(out).not.toContain("styles:");
+    expect(out).not.toContain('template:');
+    expect(out).not.toContain('styles:');
     expect(parseErrorCount(out)).toBe(0);
   });
 
-  it("handles template as the first property of the decorator", async () => {
+  it('handles template as the first property of the decorator', async () => {
     const result = await migrate({
       [COMPONENT]: componentFile(`
   template: '<p>first</p>',
@@ -120,7 +121,7 @@ describe("inline-migration schematic", () => {
     expect(parseErrorCount(out)).toBe(0);
   });
 
-  it("handles styles as the only property of the decorator", async () => {
+  it('handles styles as the only property of the decorator', async () => {
     const result = await migrate({
       [COMPONENT]: componentFile(`styles: 'p { color: green; }'`),
     });
@@ -130,50 +131,50 @@ describe("inline-migration schematic", () => {
     expect(parseErrorCount(out)).toBe(0);
   });
 
-  describe("destination file already exists with different content", () => {
+  describe('destination file already exists with different content', () => {
     const conflictFiles = () => ({
       [COMPONENT]: componentFile(`
   selector: 'app-foo',
   template: '<p>new</p>',
 `),
-      "/src/app/foo.component.html": "<p>existing</p>",
+      '/src/app/foo.component.html': '<p>existing</p>',
     });
 
-    it("skips the migration by default, leaving the inline template intact (no data loss)", async () => {
+    it('skips the migration by default, leaving the inline template intact (no data loss)', async () => {
       const result = await migrate(conflictFiles());
 
       // Existing file untouched AND the inline template preserved.
-      expect(result.readContent("/src/app/foo.component.html")).toBe("<p>existing</p>");
+      expect(result.readContent('/src/app/foo.component.html')).toBe('<p>existing</p>');
       const out = result.readContent(COMPONENT);
       expect(out).toContain("template: '<p>new</p>'");
-      expect(out).not.toContain("templateUrl");
+      expect(out).not.toContain('templateUrl');
       expect(parseErrorCount(out)).toBe(0);
     });
 
-    it("overwrites the destination with the inline content when onConflict=overwrite", async () => {
-      const result = await migrate(conflictFiles(), { onConflict: "overwrite" });
+    it('overwrites the destination with the inline content when onConflict=overwrite', async () => {
+      const result = await migrate(conflictFiles(), { onConflict: 'overwrite' });
 
-      expect(result.readContent("/src/app/foo.component.html")).toBe("<p>new</p>");
+      expect(result.readContent('/src/app/foo.component.html')).toBe('<p>new</p>');
       const out = result.readContent(COMPONENT);
       expect(out).toContain("templateUrl: './foo.component.html'");
-      expect(out).not.toContain("template:");
+      expect(out).not.toContain('template:');
       expect(parseErrorCount(out)).toBe(0);
     });
 
-    it("writes to a suffixed file, preserving both, when onConflict=suffix", async () => {
-      const result = await migrate(conflictFiles(), { onConflict: "suffix" });
+    it('writes to a suffixed file, preserving both, when onConflict=suffix', async () => {
+      const result = await migrate(conflictFiles(), { onConflict: 'suffix' });
 
       // Existing file preserved; inline written to a new, non-colliding file.
-      expect(result.readContent("/src/app/foo.component.html")).toBe("<p>existing</p>");
-      expect(result.readContent("/src/app/foo.component.1.html")).toBe("<p>new</p>");
+      expect(result.readContent('/src/app/foo.component.html')).toBe('<p>existing</p>');
+      expect(result.readContent('/src/app/foo.component.1.html')).toBe('<p>new</p>');
       const out = result.readContent(COMPONENT);
       expect(out).toContain("templateUrl: './foo.component.1.html'");
-      expect(out).not.toContain("template:");
+      expect(out).not.toContain('template:');
       expect(parseErrorCount(out)).toBe(0);
     });
   });
 
-  it("leaves a component that already uses templateUrl/styleUrls untouched", async () => {
+  it('leaves a component that already uses templateUrl/styleUrls untouched', async () => {
     const original = componentFile(`
   selector: 'app-foo',
   templateUrl: './foo.component.html',
@@ -184,36 +185,36 @@ describe("inline-migration schematic", () => {
     expect(result.readContent(COMPONENT)).toBe(original);
   });
 
-  it("scans the directory given by the path option instead of /src", async () => {
+  it('scans the directory given by the path option instead of /src', async () => {
     const result = await migrate(
       {
-        "/projects/app/foo.component.ts": componentFile(`
+        '/projects/app/foo.component.ts': componentFile(`
   selector: 'app-foo',
   template: '<p>scoped</p>',
 `),
       },
-      { path: "projects" }
+      { path: 'projects' },
     );
 
-    expect(result.readContent("/projects/app/foo.component.html")).toBe("<p>scoped</p>");
-    expect(result.readContent("/projects/app/foo.component.ts")).toContain(
-      "templateUrl: './foo.component.html'"
+    expect(result.readContent('/projects/app/foo.component.html')).toBe('<p>scoped</p>');
+    expect(result.readContent('/projects/app/foo.component.ts')).toContain(
+      "templateUrl: './foo.component.html'",
     );
   });
 
-  it("ignores components outside the default /src path", async () => {
+  it('ignores components outside the default /src path', async () => {
     const result = await migrate({
-      "/lib/foo.component.ts": componentFile(`
+      '/lib/foo.component.ts': componentFile(`
   selector: 'app-foo',
   template: '<p>x</p>',
 `),
     });
 
-    expect(result.files).not.toContain("/lib/foo.component.html");
-    expect(result.readContent("/lib/foo.component.ts")).toContain("template: '<p>x</p>'");
+    expect(result.files).not.toContain('/lib/foo.component.html');
+    expect(result.readContent('/lib/foo.component.ts')).toContain("template: '<p>x</p>'");
   });
 
-  it("skips styles migration when an array entry is not a static string literal", async () => {
+  it('skips styles migration when an array entry is not a static string literal', async () => {
     const result = await migrate({
       [COMPONENT]: componentFile(`
   selector: 'app-foo',
@@ -223,13 +224,13 @@ describe("inline-migration schematic", () => {
 
     const out = result.readContent(COMPONENT);
     // No empty .scss emitted; the real (non-resolvable) style is left inline.
-    expect(result.files).not.toContain("/src/app/foo.component.scss");
-    expect(out).toContain("styles: [BASE_STYLES]");
-    expect(out).not.toContain("styleUrls");
+    expect(result.files).not.toContain('/src/app/foo.component.scss');
+    expect(out).toContain('styles: [BASE_STYLES]');
+    expect(out).not.toContain('styleUrls');
     expect(parseErrorCount(out)).toBe(0);
   });
 
-  it("matches the existing decorator indentation when inserting (not hardcoded 2 spaces)", async () => {
+  it('matches the existing decorator indentation when inserting (not hardcoded 2 spaces)', async () => {
     const source = `import { Component } from '@angular/core';
 
 @Component({
@@ -243,7 +244,7 @@ export class FooComponent {}
     const out = result.readContent(COMPONENT);
     // The decorator uses 4-space indentation; the inserted templateUrl must too.
     expect(out).toContain("\n    templateUrl: './foo.component.html'");
-    expect(out).not.toContain("\n  templateUrl:");
+    expect(out).not.toContain('\n  templateUrl:');
     expect(parseErrorCount(out)).toBe(0);
   });
 });

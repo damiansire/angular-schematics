@@ -8,10 +8,10 @@ npm con su propio nombre y vive bajo [`packages/`](packages/).
 
 ## Paquetes
 
-| Paquete | Carpeta | Descripción |
-|---|---|---|
-| `angular-inline-migration-schematic` | [`packages/angular-inline-migration-schematic`](packages/angular-inline-migration-schematic) | Migra `template`/`styles` inline de los `@Component` a archivos externos `.html`/`.scss`. |
-| `angular-generators-schematic` | [`packages/angular-generators-schematic`](packages/angular-generators-schematic) | Generadores: store con signals (`signal-store`), interceptor HTTP funcional con retry (`http-interceptor`) y par smart/dumb container+presentational (`smart-dumb`). |
+| Paquete                              | Carpeta                                                                                      | Descripción                                                                                                                                                          |
+| ------------------------------------ | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `angular-inline-migration-schematic` | [`packages/angular-inline-migration-schematic`](packages/angular-inline-migration-schematic) | Migra `template`/`styles` inline de los `@Component` a archivos externos `.html`/`.scss`.                                                                            |
+| `angular-generators-schematic`       | [`packages/angular-generators-schematic`](packages/angular-generators-schematic)             | Generadores: store con signals (`signal-store`), interceptor HTTP funcional con retry (`http-interceptor`) y par smart/dumb container+presentational (`smart-dumb`). |
 
 ## Desarrollo
 

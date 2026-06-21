@@ -1,6 +1,6 @@
-import { Rule, SchematicContext, Tree } from "@angular-devkit/schematics";
-import { dirname, join, basename, normalize } from "path";
-import * as ts from "typescript";
+import { Rule, SchematicContext, Tree } from '@angular-devkit/schematics';
+import { dirname, join, basename, normalize } from 'path';
+import * as ts from 'typescript';
 
 // --- Helper Functions Restored ---
 
@@ -18,8 +18,14 @@ function findComponentDecorator(sourceFile: ts.SourceFile): ts.ObjectLiteralExpr
         for (const decorator of decorators) {
           if (ts.isCallExpression(decorator.expression)) {
             const expression = decorator.expression;
-            if (ts.isIdentifier(expression.expression) && expression.expression.text === "Component") {
-              if (expression.arguments.length > 0 && ts.isObjectLiteralExpression(expression.arguments[0])) {
+            if (
+              ts.isIdentifier(expression.expression) &&
+              expression.expression.text === 'Component'
+            ) {
+              if (
+                expression.arguments.length > 0 &&
+                ts.isObjectLiteralExpression(expression.arguments[0])
+              ) {
                 componentDecorator = expression.arguments[0];
                 return; // Found, stop searching
               }
@@ -41,10 +47,15 @@ function findComponentDecorator(sourceFile: ts.SourceFile): ts.ObjectLiteralExpr
 /**
  * Gets the value of a specific property (like 'styles' or 'styleUrls') from the decorator.
  */
-function getDecoratorPropertyValue(decorator: ts.ObjectLiteralExpression, propertyName: string): string | (string | null)[] | undefined {
+function getDecoratorPropertyValue(
+  decorator: ts.ObjectLiteralExpression,
+  propertyName: string,
+): string | (string | null)[] | undefined {
   const property = decorator.properties.find(
     (prop): prop is ts.PropertyAssignment =>
-      ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name) && prop.name.text === propertyName
+      ts.isPropertyAssignment(prop) &&
+      ts.isIdentifier(prop.name) &&
+      prop.name.text === propertyName,
   );
 
   if (property) {
@@ -55,7 +66,7 @@ function getDecoratorPropertyValue(decorator: ts.ObjectLiteralExpression, proper
     }
     // Handle array literal
     if (ts.isArrayLiteralExpression(initializer)) {
-      return initializer.elements.map(element => {
+      return initializer.elements.map((element) => {
         if (ts.isStringLiteral(element) || ts.isNoSubstitutionTemplateLiteral(element)) {
           return element.text;
         }
@@ -72,13 +83,16 @@ function getDecoratorPropertyValue(decorator: ts.ObjectLiteralExpression, proper
  */
 function getDecoratorPropertyNode(
   decorator: ts.ObjectLiteralExpression,
-  propertyName: string
+  propertyName: string,
 ): ts.PropertyAssignment | null {
   const property = decorator.properties.find(
     (
-      prop // Type guard added below
-    ): prop is ts.PropertyAssignment => // Type guard
-      ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name) && prop.name.text === propertyName
+      prop, // Type guard added below
+    ): prop is ts.PropertyAssignment =>
+      // Type guard
+      ts.isPropertyAssignment(prop) &&
+      ts.isIdentifier(prop.name) &&
+      prop.name.text === propertyName,
   );
   return property || null; // If find doesn't find it, it returns undefined, which becomes null with ||
 }
@@ -90,9 +104,9 @@ function getDecoratorPropertyNode(
  */
 function getIndent(source: string, node: ts.Node): string {
   const start = node.getStart();
-  const lineStart = source.lastIndexOf("\n", start - 1) + 1;
+  const lineStart = source.lastIndexOf('\n', start - 1) + 1;
   const match = source.substring(lineStart, start).match(/^[ \t]*/);
-  return match ? match[0] : "  ";
+  return match ? match[0] : '  ';
 }
 
 /**
@@ -102,11 +116,11 @@ function getIndent(source: string, node: ts.Node): string {
  *   - overwrite : replace the destination file with the inline content
  *   - suffix    : write to a new, non-colliding file (e.g. foo.component.1.html)
  */
-type OnConflict = "skip" | "overwrite" | "suffix";
+type OnConflict = 'skip' | 'overwrite' | 'suffix';
 
 interface ConflictResolution {
   /** What to do with the destination file. */
-  action: "create" | "overwrite" | "reuse" | "skip";
+  action: 'create' | 'overwrite' | 'reuse' | 'skip';
   /** Final file name to reference from the decorator (may be suffixed). */
   fileName: string;
 }
@@ -124,33 +138,33 @@ function resolveConflict(
   content: string,
   onConflict: OnConflict,
   componentPath: string,
-  kind: "template" | "styles"
+  kind: 'template' | 'styles',
 ): ConflictResolution {
   const fullPath = normalize(join(componentDir, fileName));
 
   if (!tree.exists(fullPath)) {
-    return { action: "create", fileName };
+    return { action: 'create', fileName };
   }
 
   const existingBuffer = tree.read(fullPath);
-  const existing = existingBuffer ? existingBuffer.toString("utf-8") : "";
+  const existing = existingBuffer ? existingBuffer.toString('utf-8') : '';
   if (existing === content) {
     // Same content already on disk: just repoint, nothing to write.
-    return { action: "reuse", fileName };
+    return { action: 'reuse', fileName };
   }
 
   // Conflict: destination exists with DIFFERENT content.
-  if (onConflict === "overwrite") {
+  if (onConflict === 'overwrite') {
     context.logger.warn(
-      `  ⚠️ Overwriting ${fileName} for ${componentPath} (onConflict=overwrite).`
+      `  ⚠️ Overwriting ${fileName} for ${componentPath} (onConflict=overwrite).`,
     );
-    return { action: "overwrite", fileName };
+    return { action: 'overwrite', fileName };
   }
 
-  if (onConflict === "suffix") {
-    const dot = fileName.lastIndexOf(".");
+  if (onConflict === 'suffix') {
+    const dot = fileName.lastIndexOf('.');
     const stem = dot === -1 ? fileName : fileName.substring(0, dot);
-    const ext = dot === -1 ? "" : fileName.substring(dot);
+    const ext = dot === -1 ? '' : fileName.substring(dot);
     let i = 1;
     let candidate = `${stem}.${i}${ext}`;
     while (tree.exists(normalize(join(componentDir, candidate)))) {
@@ -158,16 +172,16 @@ function resolveConflict(
       candidate = `${stem}.${i}${ext}`;
     }
     context.logger.warn(
-      `  ⚠️ ${fileName} already exists for ${componentPath}; writing ${kind} to ${candidate} instead (onConflict=suffix).`
+      `  ⚠️ ${fileName} already exists for ${componentPath}; writing ${kind} to ${candidate} instead (onConflict=suffix).`,
     );
-    return { action: "create", fileName: candidate };
+    return { action: 'create', fileName: candidate };
   }
 
   // Default: skip. Leave the inline source intact and warn.
   context.logger.warn(
-    `  ⚠️ Skipping ${kind} migration for ${componentPath}: ${fileName} already exists with different content. Inline ${kind} left intact to avoid data loss (onConflict=skip).`
+    `  ⚠️ Skipping ${kind} migration for ${componentPath}: ${fileName} already exists with different content. Inline ${kind} left intact to avoid data loss (onConflict=skip).`,
   );
-  return { action: "skip", fileName };
+  return { action: 'skip', fileName };
 }
 
 // --- Main Schematic Rule ---
@@ -180,19 +194,19 @@ export interface MigrarTemplatesOptions {
 }
 
 export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
-  const onConflict: OnConflict = options.onConflict ?? "skip";
+  const onConflict: OnConflict = options.onConflict ?? 'skip';
   // Forward-slash, leading-slash path for the in-memory Tree (no OS separators).
-  const searchPath = "/" + (options.path ?? "src").replace(/^\/+|\/+$/g, "");
+  const searchPath = '/' + (options.path ?? 'src').replace(/^\/+|\/+$/g, '');
 
   return (tree: Tree, context: SchematicContext): Tree => {
     context.logger.info(
-      `🚀 Starting search for components with inline templates and styles in ${searchPath} (onConflict=${onConflict})...`
+      `🚀 Starting search for components with inline templates and styles in ${searchPath} (onConflict=${onConflict})...`,
     );
 
     try {
       tree.getDir(searchPath).visit((filePath) => {
         try {
-          if (!filePath.endsWith(".component.ts")) {
+          if (!filePath.endsWith('.component.ts')) {
             context.logger.debug(`  ➡️ Skipping (not a .component.ts file)`);
             return;
           }
@@ -203,13 +217,8 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
             return;
           }
 
-          const content = fileBuffer.toString("utf-8");
-          const sourceFile = ts.createSourceFile(
-            filePath,
-            content,
-            ts.ScriptTarget.Latest,
-            true
-          );
+          const content = fileBuffer.toString('utf-8');
+          const sourceFile = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true);
 
           const componentDecorator = findComponentDecorator(sourceFile);
           if (!componentDecorator) {
@@ -219,33 +228,43 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
 
           // Handle template migration
           const hasTemplateUrl = componentDecorator.properties.some(
-            (prop) => ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name) && prop.name.text === "templateUrl"
+            (prop) =>
+              ts.isPropertyAssignment(prop) &&
+              ts.isIdentifier(prop.name) &&
+              prop.name.text === 'templateUrl',
           );
 
           if (!hasTemplateUrl) {
-            const templateContent = getDecoratorPropertyValue(componentDecorator, "template");
+            const templateContent = getDecoratorPropertyValue(componentDecorator, 'template');
             if (templateContent !== undefined) {
               const componentDir = dirname(filePath);
-              const componentBaseName = basename(filePath, ".ts");
+              const componentBaseName = basename(filePath, '.ts');
               const htmlFileName = `${componentBaseName}.html`;
 
               // Resolve the destination against the conflict policy BEFORE
               // mutating the .ts, so we never drop the inline template unless
               // it is safe (or the user explicitly asked to overwrite/suffix).
               const resolution = resolveConflict(
-                tree, context, componentDir, htmlFileName, templateContent as string, onConflict, filePath, "template"
+                tree,
+                context,
+                componentDir,
+                htmlFileName,
+                templateContent as string,
+                onConflict,
+                filePath,
+                'template',
               );
-              const safeToMigrateTemplate = resolution.action !== "skip";
+              const safeToMigrateTemplate = resolution.action !== 'skip';
               const relativeHtmlPath = `./${resolution.fileName}`;
               const targetHtmlPath = normalize(join(componentDir, resolution.fileName));
-              if (resolution.action === "create") {
+              if (resolution.action === 'create') {
                 tree.create(targetHtmlPath, templateContent as string);
-              } else if (resolution.action === "overwrite") {
+              } else if (resolution.action === 'overwrite') {
                 tree.overwrite(targetHtmlPath, templateContent as string);
               }
               // 'reuse': destination already holds the right content; 'skip': handled below.
 
-              const templatePropertyNode = getDecoratorPropertyNode(componentDecorator, "template");
+              const templatePropertyNode = getDecoratorPropertyNode(componentDecorator, 'template');
               if (safeToMigrateTemplate && templatePropertyNode) {
                 const recorder = tree.beginUpdate(filePath);
                 const fileLength = content.length;
@@ -279,7 +298,9 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
                   recorder.insertLeft(removalStart, textToInsert);
                   tree.commitUpdate(recorder);
                 } else {
-                  context.logger.warn(`  ⚠️ Skipping template update for ${filePath}: Invalid removal range`);
+                  context.logger.warn(
+                    `  ⚠️ Skipping template update for ${filePath}: Invalid removal range`,
+                  );
                 }
               }
             }
@@ -295,12 +316,12 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
             context.logger.warn(`  ⚠️ Could not re-read file for styles migration: ${filePath}`);
             return;
           }
-          const stylesContentSource = stylesFileBuffer.toString("utf-8");
+          const stylesContentSource = stylesFileBuffer.toString('utf-8');
           const stylesSourceFile = ts.createSourceFile(
             filePath,
             stylesContentSource,
             ts.ScriptTarget.Latest,
-            true
+            true,
           );
           const stylesComponentDecorator = findComponentDecorator(stylesSourceFile);
           if (!stylesComponentDecorator) {
@@ -308,15 +329,21 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
           }
 
           const hasStyleUrls = stylesComponentDecorator.properties.some(
-            (prop) => ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name) && prop.name.text === "styleUrls"
+            (prop) =>
+              ts.isPropertyAssignment(prop) &&
+              ts.isIdentifier(prop.name) &&
+              prop.name.text === 'styleUrls',
           );
 
           if (!hasStyleUrls) {
-            const stylesContent = getDecoratorPropertyValue(stylesComponentDecorator, "styles");
+            const stylesContent = getDecoratorPropertyValue(stylesComponentDecorator, 'styles');
             if (stylesContent !== undefined) {
               const componentDir = dirname(filePath);
-              const componentBaseName = basename(filePath, ".ts");
-              const stylesPropertyNode = getDecoratorPropertyNode(stylesComponentDecorator, "styles");
+              const componentBaseName = basename(filePath, '.ts');
+              const stylesPropertyNode = getDecoratorPropertyNode(
+                stylesComponentDecorator,
+                'styles',
+              );
 
               // Resolve each destination .scss against the conflict policy BEFORE
               // mutating anything. In 'skip' mode any conflict aborts the whole
@@ -331,23 +358,32 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
               const hasNonLiteral = styleValues.some((s) => s === null);
               if (hasNonLiteral) {
                 context.logger.warn(
-                  `  ⚠️ Skipping styles migration for ${filePath}: a styles entry is not a static string literal (e.g. a referenced constant) and cannot be externalized.`
+                  `  ⚠️ Skipping styles migration for ${filePath}: a styles entry is not a static string literal (e.g. a referenced constant) and cannot be externalized.`,
                 );
               }
               const styleResolutions = hasNonLiteral
                 ? []
                 : (styleValues as string[]).map((style, index) => {
-                    const scssFileName = index === 0
-                      ? `${componentBaseName}.scss`
-                      : `${componentBaseName}-${index + 1}.scss`;
+                    const scssFileName =
+                      index === 0
+                        ? `${componentBaseName}.scss`
+                        : `${componentBaseName}-${index + 1}.scss`;
                     return {
                       style,
                       resolution: resolveConflict(
-                        tree, context, componentDir, scssFileName, style, onConflict, filePath, "styles"
+                        tree,
+                        context,
+                        componentDir,
+                        scssFileName,
+                        style,
+                        onConflict,
+                        filePath,
+                        'styles',
                       ),
                     };
                   });
-              const stylesSkip = hasNonLiteral || styleResolutions.some((r) => r.resolution.action === "skip");
+              const stylesSkip =
+                hasNonLiteral || styleResolutions.some((r) => r.resolution.action === 'skip');
 
               if (stylesSkip) {
                 // Per-element warnings already emitted by resolveConflict; leave inline intact.
@@ -358,7 +394,8 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
                 // If the property is the first one in the decorator, getFullStart
                 // points right after '{' and there is no leading comma. A leading
                 // comma in the inserted text would produce '@Component({, ... })'.
-                const isFirstProperty = stylesComponentDecorator.properties[0] === stylesPropertyNode;
+                const isFirstProperty =
+                  stylesComponentDecorator.properties[0] === stylesPropertyNode;
 
                 // Calculate safe removal range
                 let removalStart = Math.max(0, stylesPropertyNode.getFullStart());
@@ -382,25 +419,26 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
                   const connector = isFirstProperty ? `\n${indent}` : `,\n${indent}`;
                   const styleUrls = styleResolutions.map(({ style, resolution }) => {
                     const target = normalize(join(componentDir, resolution.fileName));
-                    if (resolution.action === "create") {
+                    if (resolution.action === 'create') {
                       tree.create(target, style);
-                    } else if (resolution.action === "overwrite") {
+                    } else if (resolution.action === 'overwrite') {
                       tree.overwrite(target, style);
                     }
                     // 'reuse': destination already holds the right content.
                     return `./${resolution.fileName}`;
                   });
-                  const textToInsert = `${connector}styleUrls: [${styleUrls.map(url => `'${url}'`).join(', ')}]`;
+                  const textToInsert = `${connector}styleUrls: [${styleUrls.map((url) => `'${url}'`).join(', ')}]`;
                   recorder.insertLeft(removalStart, textToInsert);
 
                   tree.commitUpdate(recorder);
                 } else {
-                  context.logger.warn(`  ⚠️ Skipping styles update for ${filePath}: Invalid removal range`);
+                  context.logger.warn(
+                    `  ⚠️ Skipping styles update for ${filePath}: Invalid removal range`,
+                  );
                 }
               }
             }
           }
-
         } catch (error) {
           context.logger.error(`💥 Error processing file ${filePath}:`);
           if (error instanceof Error) {
@@ -426,7 +464,7 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
       throw error;
     }
 
-    context.logger.info("\n🏁 Inline template and styles migration completed.");
+    context.logger.info('\n🏁 Inline template and styles migration completed.');
     return tree;
   };
 }

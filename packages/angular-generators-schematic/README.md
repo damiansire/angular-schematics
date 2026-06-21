@@ -3,11 +3,11 @@
 A collection of practical Angular **generator** schematics for day-to-day work.
 All three emit modern, standalone, signals-first code.
 
-| Schematic | Alias | Generates |
-|---|---|---|
-| `signal-store` | `ss` | A signals-based store service (private `WritableSignal` state, `computed` selectors, immutable update methods) plus its spec. |
-| `http-interceptor` | `hi` | A functional `HttpInterceptorFn` with centralized error handling and a configurable retry (exponential backoff) for transient 5xx / network failures. |
-| `smart-dumb` | `sd` | A paired **container** (smart) + **presentational** (dumb) standalone component set, already wired together via inputs/outputs. |
+| Schematic          | Alias | Generates                                                                                                                                             |
+| ------------------ | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `signal-store`     | `ss`  | A signals-based store service (private `WritableSignal` state, `computed` selectors, immutable update methods) plus its spec.                         |
+| `http-interceptor` | `hi`  | A functional `HttpInterceptorFn` with centralized error handling and a configurable retry (exponential backoff) for transient 5xx / network failures. |
+| `smart-dumb`       | `sd`  | A paired **container** (smart) + **presentational** (dumb) standalone component set, already wired together via inputs/outputs.                       |
 
 > **Status: not yet published to npm.** Use the local `npm link` workflow during
 > development (see the sibling package's README for the full link recipe).
@@ -29,33 +29,33 @@ ng g angular-generators-schematic:smart-dumb user-list --prefix app
 
 #### `signal-store` (alias `ss`)
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `name` | `string` | — (required) | Store name (`cart` -> `CartStore` in `cart.store.ts`). |
-| `path` | `string` | `src/app` | Target directory, relative to the project root. |
-| `entity` | `string` | `unknown` | TypeScript type of the entity held in state. |
+| Option   | Type     | Default      | Description                                            |
+| -------- | -------- | ------------ | ------------------------------------------------------ |
+| `name`   | `string` | — (required) | Store name (`cart` -> `CartStore` in `cart.store.ts`). |
+| `path`   | `string` | `src/app`    | Target directory, relative to the project root.        |
+| `entity` | `string` | `unknown`    | TypeScript type of the entity held in state.           |
 
 #### `http-interceptor` (alias `hi`)
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `name` | `string` | — (required) | Interceptor name (`auth` -> `authInterceptor`). |
-| `path` | `string` | `src/app` | Target directory, relative to the project root. |
-| `retries` | `number` | `2` | Retries for transient (5xx / network) errors before propagating. |
+| Option    | Type     | Default      | Description                                                      |
+| --------- | -------- | ------------ | ---------------------------------------------------------------- |
+| `name`    | `string` | — (required) | Interceptor name (`auth` -> `authInterceptor`).                  |
+| `path`    | `string` | `src/app`    | Target directory, relative to the project root.                  |
+| `retries` | `number` | `2`          | Retries for transient (5xx / network) errors before propagating. |
 
 Register the generated interceptor:
 
 ```ts
-provideHttpClient(withInterceptors([authInterceptor]))
+provideHttpClient(withInterceptors([authInterceptor]));
 ```
 
 #### `smart-dumb` (alias `sd`)
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `name` | `string` | — (required) | Base name (`user-list` -> `UserListContainerComponent` + `UserListComponent`). |
-| `path` | `string` | `src/app` | Target directory, relative to the project root. |
-| `prefix` | `string` | `app` | Selector prefix. |
+| Option   | Type     | Default      | Description                                                                    |
+| -------- | -------- | ------------ | ------------------------------------------------------------------------------ |
+| `name`   | `string` | — (required) | Base name (`user-list` -> `UserListContainerComponent` + `UserListComponent`). |
+| `path`   | `string` | `src/app`    | Target directory, relative to the project root.                                |
+| `prefix` | `string` | `app`        | Selector prefix.                                                               |
 
 ## Development
 

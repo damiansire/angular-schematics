@@ -1,5 +1,5 @@
 ---
-"angular-inline-migration-schematic": minor
+'angular-inline-migration-schematic': minor
 ---
 
 Primer release gestionado con Changesets. El paquete queda listo para publicarse
