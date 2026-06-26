@@ -1,44 +1,44 @@
 # angular-schematics
 
-Monorepo de schematics de Angular. Cada paquete está pensado para publicarse en
-npm con su propio nombre y vive bajo [`packages/`](packages/).
+A monorepo of Angular schematics. Each package is designed to be published to npm
+under its own name and lives under [`packages/`](packages/).
 
-> **Estado:** todavía ningún paquete está publicado en npm. Por ahora se usan
-> mediante `npm link` (ver el README de cada paquete).
+> **Status:** no package is published to npm yet. For now they are used via
+> `npm link` (see each package's README).
 
-## Paquetes
+## Packages
 
-| Paquete                              | Carpeta                                                                                      | Descripción                                                                                                                                                          |
+| Package                              | Folder                                                                                       | Description                                                                                                                                                          |
 | ------------------------------------ | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `angular-inline-migration-schematic` | [`packages/angular-inline-migration-schematic`](packages/angular-inline-migration-schematic) | Migra `template`/`styles` inline de los `@Component` a archivos externos `.html`/`.scss`.                                                                            |
-| `angular-generators-schematic`       | [`packages/angular-generators-schematic`](packages/angular-generators-schematic)             | Generadores: store con signals (`signal-store`), interceptor HTTP funcional con retry (`http-interceptor`) y par smart/dumb container+presentational (`smart-dumb`). |
+| `angular-inline-migration-schematic` | [`packages/angular-inline-migration-schematic`](packages/angular-inline-migration-schematic) | Migrates inline `template`/`styles` from `@Component` decorators to external `.html`/`.scss` files.                                                                  |
+| `angular-generators-schematic`       | [`packages/angular-generators-schematic`](packages/angular-generators-schematic)             | Generators: signal-based store (`signal-store`), functional HTTP interceptor with retry (`http-interceptor`), and a smart/dumb container+presentational pair (`smart-dumb`). |
 
-## Desarrollo
+## Development
 
-Workspaces de npm. Desde la raíz:
+npm workspaces. From the repo root:
 
 ```bash
-npm install        # instala todas las dependencias (hoisted)
-npm run build      # buildea los paquetes
-npm test           # corre los tests de cada paquete
+npm install        # install all dependencies (hoisted)
+npm run build      # build the packages
+npm test           # run each package's tests
 ```
 
-Para trabajar sobre un paquete puntual, usá `-w <nombre>`, por ejemplo
+To work on a single package, use `-w <name>`, e.g.
 `npm run build -w angular-inline-migration-schematic`.
 
-## Versionado y release
+## Versioning and release
 
-El versionado y el changelog se gestionan con
+Versioning and the changelog are managed with
 [Changesets](https://github.com/changesets/changesets):
 
 ```bash
-npm run changeset   # describir el cambio (genera un .md en .changeset/)
-npm run version     # consume los changesets: bump de versión + CHANGELOG
-npm run publish:dist  # build + npm publish del dist/ del paquete
+npm run changeset   # describe the change (generates a .md in .changeset/)
+npm run version     # consume the changesets: version bump + CHANGELOG
+npm run publish:dist  # build + npm publish of the package's dist/
 ```
 
-En CI, el workflow `release` (`.github/workflows/release.yml`) automatiza el
-flujo: al mergear a `main` abre/actualiza un PR "Version Packages" con los
-bumps, y cuando ese PR se mergea publica a npm desde `dist/`. Requiere el secret
-`NPM_TOKEN`. El workflow `ci` corre typecheck + build + tests (Node 18/20/22) en
-cada PR.
+In CI, the `release` workflow (`.github/workflows/release.yml`) automates the
+flow: on merge to `main` it opens/updates a "Version Packages" PR with the
+bumps, and when that PR is merged it publishes to npm from `dist/`. It requires
+the `NPM_TOKEN` secret. The `ci` workflow runs typecheck + build + tests
+(Node 18/20/22) on every PR.
