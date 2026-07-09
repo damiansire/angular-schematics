@@ -1,0 +1,42 @@
+name: Links
+
+# Verifica que los links y badges de los README no estén rotos.
+# Corre en cada push a main y en cada PR. Falla si algún enlace no resuelve.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**/*.md"
+      - ".lycheeignore"
+      - ".github/workflows/links.yml"
+  pull_request:
+    paths:
+      - "**/*.md"
+      - ".lycheeignore"
+      - ".github/workflows/links.yml"
+  # Permite dispararlo a mano desde la pestaña Actions.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check README + package docs for broken links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # Solo los README de cara al usuario (raíz + paquetes).
+          # Se ignoran anclas internas (--include-fragments off por defecto)
+          # y los hosts de .lycheeignore (localhost, placeholders).
+          args: >-
+            --no-progress
+            --exclude-mail
+            README.md
+            packages/angular-inline-migration-schematic/README.md
+            packages/angular-generators-schematic/README.md
+          fail: true

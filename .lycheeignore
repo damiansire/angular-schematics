@@ -1,0 +1,5 @@
+# URLs lychee should not check (avoid false positives).
+# Local/placeholder hosts.
+localhost
+127.0.0.1
+example.com
