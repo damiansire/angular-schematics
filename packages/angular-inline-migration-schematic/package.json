@@ -1,6 +1,6 @@
 {
   "name": "angular-inline-migration-schematic",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "An Angular schematic that migrates inline component templates and styles into external .html and .scss files.",
   "scripts": {
     "build": "tsc -p tsconfig.json && npm run copy-root-files && npm run copy-src-files",
