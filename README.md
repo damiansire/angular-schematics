@@ -8,9 +8,9 @@ under its own name and lives under [`packages/`](packages/).
 
 ## Packages
 
-| Package                              | Folder                                                                                       | Description                                                                                                                                                          |
-| ------------------------------------ | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `angular-inline-migration-schematic` | [`packages/angular-inline-migration-schematic`](packages/angular-inline-migration-schematic) | Migrates inline `template`/`styles` from `@Component` decorators to external `.html`/`.scss` files.                                                                  |
+| Package                              | Folder                                                                                       | Description                                                                                                                                                                  |
+| ------------------------------------ | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `angular-inline-migration-schematic` | [`packages/angular-inline-migration-schematic`](packages/angular-inline-migration-schematic) | Migrates inline `template`/`styles` from `@Component` decorators to external `.html`/`.scss` files.                                                                          |
 | `angular-generators-schematic`       | [`packages/angular-generators-schematic`](packages/angular-generators-schematic)             | Generators: signal-based store (`signal-store`), functional HTTP interceptor with retry (`http-interceptor`), and a smart/dumb container+presentational pair (`smart-dumb`). |
 
 ## Development
