@@ -1,6 +1,11 @@
 {
   "$schema": "../node_modules/@angular-devkit/schematics/collection-schema.json",
   "schematics": {
+    "ng-add": {
+      "description": "Instala el paquete y confirma la disponibilidad de los generadores (signal-store, http-interceptor, smart-dumb).",
+      "factory": "./ng-add/index#ngAdd",
+      "schema": "./ng-add/schema.json"
+    },
     "signal-store": {
       "description": "Genera un store/servicio basado en signals (estado privado con WritableSignal, selectors con computed y métodos de actualización inmutables).",
       "factory": "./signal-store/index#signalStore",

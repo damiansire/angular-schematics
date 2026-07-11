@@ -32,6 +32,9 @@
   "schematics": "./collection.json",
   "files": [
     "collection.json",
+    "ng-add/**/*.js",
+    "ng-add/**/*.d.ts",
+    "ng-add/**/*.json",
     "signal-store/**/*.js",
     "signal-store/**/*.d.ts",
     "signal-store/**/*.json",
