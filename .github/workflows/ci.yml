@@ -29,3 +29,35 @@ jobs:
         run: npm run build
       - name: Test
         run: npm test
+
+  # Node fijo (LTS más reciente): matrixea versiones MAYORES de
+  # @angular-devkit/core y @angular-devkit/schematics para detectar breakage
+  # entre majors del devkit, algo que el matrix de Node arriba no cubre (todas
+  # esas celdas corren contra la versión fija de package.json, ^19.2.7). El
+  # devkit no soporta rangos ">=": se sobreescribe explícitamente con
+  # `npm install ...@$VERSION --no-save` antes de compilar/testear cada
+  # workspace, y solo se corre el gate de tests (lint/format/typecheck ya
+  # corren en build-test contra la versión pineada).
+  devkit-compat:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        devkit-version: [17, 18, 19, 20]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Sobreescribir @angular-devkit/{core,schematics} a la versión de la matriz
+        run: |
+          npm install \
+            @angular-devkit/core@${{ matrix.devkit-version }} \
+            @angular-devkit/schematics@${{ matrix.devkit-version }} \
+            --no-save \
+            --workspace=angular-generators-schematic \
+            --workspace=angular-inline-migration-schematic
+      - name: Test contra devkit ${{ matrix.devkit-version }}
+        run: npm test
