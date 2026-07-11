@@ -1,6 +1,11 @@
 {
   "$schema": "../node_modules/@angular-devkit/schematics/collection-schema.json",
   "schematics": {
+    "ng-add": {
+      "description": "Instala el paquete y confirma la disponibilidad de la migración (inline-migration).",
+      "factory": "./ng-add/index#ngAdd",
+      "schema": "./ng-add/schema.json"
+    },
     "inline-migration": {
       "description": "Migra templates inline ('template') en componentes a archivos HTML externos ('templateUrl').",
       "factory": "./inline-migration/index#migrarTemplates",
