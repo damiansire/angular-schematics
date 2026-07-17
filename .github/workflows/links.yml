@@ -35,7 +35,6 @@ jobs:
           # y los hosts de .lycheeignore (localhost, placeholders).
           args: >-
             --no-progress
-            --exclude-mail
             README.md
             packages/angular-inline-migration-schematic/README.md
             packages/angular-generators-schematic/README.md
