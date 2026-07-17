@@ -5,7 +5,7 @@ name: Hygiene Gate
 # rewrite<N>.py. Higiene dependiente del gate, no del habito (Netflix/Instagram).
 on:
   push:
-    branches: ["**"]
+    branches: ['**']
   pull_request:
 
 permissions:
