@@ -1,5 +1,6 @@
 import { <%= classify(name) %>Store } from './<%= dasherize(name) %>.store';
-
+<% if (entityImport) { %>import { <%= entityTypes %> } from '<%= entityImport %>';
+<% } %>
 describe('<%= classify(name) %>Store', () => {
   let store: <%= classify(name) %>Store;
 

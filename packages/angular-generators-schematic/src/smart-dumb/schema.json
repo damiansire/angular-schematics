@@ -6,6 +6,7 @@
   "properties": {
     "name": {
       "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9._-]*$",
       "description": "Nombre base del par (ej. 'user-list' genera UserListContainerComponent + UserListComponent).",
       "$default": {
         "$source": "argv",

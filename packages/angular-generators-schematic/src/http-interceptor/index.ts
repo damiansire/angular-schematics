@@ -1,5 +1,6 @@
 import { type Rule, type SchematicContext, type Tree } from '@angular-devkit/schematics';
 import { scaffold } from '../utils/scaffold';
+import { validateName } from '../utils/validate-name';
 
 export interface HttpInterceptorOptions {
   /** Interceptor name (e.g. 'auth' -> authInterceptor in auth.interceptor.ts). */
@@ -18,6 +19,7 @@ export interface HttpInterceptorOptions {
  */
 export function httpInterceptor(options: HttpInterceptorOptions): Rule {
   return (_tree: Tree, _context: SchematicContext): Rule => {
+    validateName(options.name);
     const targetPath = '/' + (options.path ?? 'src/app').replace(/^\/+|\/+$/g, '');
     // Clamp to a sane, non-negative integer so the template never emits retry(NaN).
     const retries = Number.isFinite(options.retries)

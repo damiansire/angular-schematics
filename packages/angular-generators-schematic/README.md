@@ -16,7 +16,9 @@ All three emit modern, standalone, signals-first code.
 
 ```bash
 # signals store -> src/app/cart.store.ts (CartStore) + spec
-ng g angular-generators-schematic:signal-store cart --entity Product
+# --entity-import is required whenever --entity is not a built-in type:
+# without it the generated file would reference Product without importing it.
+ng g angular-generators-schematic:signal-store cart --entity Product --entity-import ./product.model
 
 # functional interceptor -> src/app/auth.interceptor.ts (authInterceptor)
 ng g angular-generators-schematic:http-interceptor auth --retries 3
@@ -29,11 +31,17 @@ ng g angular-generators-schematic:smart-dumb user-list --prefix app
 
 #### `signal-store` (alias `ss`)
 
-| Option   | Type     | Default      | Description                                            |
-| -------- | -------- | ------------ | ------------------------------------------------------ |
-| `name`   | `string` | — (required) | Store name (`cart` -> `CartStore` in `cart.store.ts`). |
-| `path`   | `string` | `src/app`    | Target directory, relative to the project root.        |
-| `entity` | `string` | `unknown`    | TypeScript type of the entity held in state.           |
+| Option         | Type     | Default      | Description                                                                                                      |
+| -------------- | -------- | ------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `name`         | `string` | — (required) | Store name (`cart` -> `CartStore` in `cart.store.ts`). Letters, digits, `.`, `_`, `-`; must start with a letter. |
+| `path`         | `string` | `src/app`    | Target directory, relative to the project root.                                                                  |
+| `entity`       | `string` | `unknown`    | TypeScript type of the entity held in state (`Product`, `Product[]`, `Map<string, Product>`).                    |
+| `entityImport` | `string` | —            | Module the entity type is imported from (`./product.model`). Required when `entity` is not built in.             |
+
+The `name` of every generator in this package is validated before anything is
+written: a value that would not survive interpolation into TypeScript and into a
+file path (quotes, `/`, `..`) is rejected with the value it received, instead of
+producing a broken file or a raw devkit path error.
 
 #### `http-interceptor` (alias `hi`)
 

@@ -1,5 +1,6 @@
 import { computed, Injectable, signal } from '@angular/core';
-
+<% if (entityImport) { %>import { <%= entityTypes %> } from '<%= entityImport %>';
+<% } %>
 /** State held by the <%= classify(name) %> store. */
 export interface <%= classify(name) %>State {
   items: <%= entity %>[];

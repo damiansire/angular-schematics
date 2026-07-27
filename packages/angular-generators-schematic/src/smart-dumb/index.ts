@@ -2,6 +2,7 @@ import { type Rule, type SchematicContext, type Tree } from '@angular-devkit/sch
 import { strings } from '@angular-devkit/core';
 import { join, normalize } from 'path';
 import { scaffold } from '../utils/scaffold';
+import { validateName } from '../utils/validate-name';
 
 export interface SmartDumbOptions {
   /** Base name of the pair (e.g. 'user-list'). */
@@ -20,6 +21,7 @@ export interface SmartDumbOptions {
  */
 export function smartDumb(options: SmartDumbOptions): Rule {
   return (_tree: Tree, _context: SchematicContext): Rule => {
+    validateName(options.name);
     const basePath = '/' + (options.path ?? 'src/app').replace(/^\/+|\/+$/g, '');
     const prefix =
       options.prefix && options.prefix.trim().length > 0 ? options.prefix.trim() : 'app';

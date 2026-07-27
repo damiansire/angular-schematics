@@ -6,6 +6,7 @@
   "properties": {
     "name": {
       "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9._-]*$",
       "description": "Nombre del interceptor (ej. 'auth' genera authInterceptor en auth.interceptor.ts).",
       "$default": {
         "$source": "argv",
