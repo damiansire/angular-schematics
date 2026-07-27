@@ -57,6 +57,15 @@ Register the generated interceptor:
 provideHttpClient(withInterceptors([authInterceptor]));
 ```
 
+Only idempotent methods (`GET`, `HEAD`, `OPTIONS`) are retried. A `POST`/`PUT`/
+`PATCH`/`DELETE` that fails is sent **once** and its error propagates: a retry
+re-sends the request, and a network failure (`status === 0`) can mean the server
+already processed it, so replaying a mutation duplicates the side effect (double
+charge, double order). If your backend guarantees idempotency for a method (an
+`Idempotency-Key` header, for example), add it to `IDEMPOTENT_METHODS` in the
+generated file. The backoff is exponential **with jitter**, so a fleet of clients
+does not retry in lockstep against a backend that is already failing.
+
 #### `smart-dumb` (alias `sd`)
 
 | Option   | Type     | Default      | Description                                                                    |

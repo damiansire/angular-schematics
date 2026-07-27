@@ -4,6 +4,16 @@ import { catchError, retry, throwError, timer } from 'rxjs';
 /** How many times to retry a transient (5xx / network) failure. */
 const MAX_RETRIES = <%= retries %>;
 
+/**
+ * Methods safe to replay. A retry re-sends the request, and `status === 0`
+ * covers the case where the server DID process it and only the response was
+ * lost: replaying a POST/PUT/PATCH/DELETE there duplicates the side effect
+ * (double charge, double order). Per RFC 9110 only safe/idempotent methods may
+ * be re-sent automatically. Add a method here only if your backend enforces
+ * idempotency for it (e.g. via an Idempotency-Key header).
+ */
+const IDEMPOTENT_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
 /** A response that is worth retrying: network glitch (status 0) or any 5xx. */
 function isTransient(error: HttpErrorResponse): boolean {
   return error.status === 0 || (error.status >= 500 && error.status < 600);
@@ -22,14 +32,18 @@ export const <%= camelize(name) %>Interceptor: HttpInterceptorFn = (req, next) =
 
   return next(req).pipe(
     retry({
-      count: MAX_RETRIES,
+      // A non-idempotent method gets zero retries: the request is emitted once
+      // and its error propagates untouched.
+      count: IDEMPOTENT_METHODS.has(req.method) ? MAX_RETRIES : 0,
       // Exponential backoff, but only for transient errors. Non-transient
       // errors (4xx, etc.) re-throw immediately and skip the remaining retries.
       delay: (error: HttpErrorResponse, retryCount: number) => {
         if (!isTransient(error)) {
           return throwError(() => error);
         }
-        return timer(Math.pow(2, retryCount - 1) * 500);
+        // Equal jitter: without it every client retries in lockstep at t+500ms
+        // and piles onto a backend that is already failing (thundering herd).
+        return timer(Math.pow(2, retryCount - 1) * 500 * (0.5 + Math.random()));
       },
     }),
     catchError((error: HttpErrorResponse) => {
