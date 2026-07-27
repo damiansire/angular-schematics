@@ -18,6 +18,34 @@ The schematic (`angular-inline-migration-schematic:inline-migration`, alias `mt`
 4.  **Comma Handling:** Attempts to automatically adjust commas when replacing properties in the decorator.
 5.  **Safety (no silent data loss):** When a destination `.html`/`.scss` already exists with **different** content, the schematic does **not** silently drop the inline source. Its behaviour is controlled by the [`onConflict`](#options) option (default `skip`): it warns and leaves the component untouched. Use `overwrite` or `suffix` to opt into a different policy.
 
+## What it Does NOT Do (deliberate limits)
+
+These are refusals, not gaps: in each case the schematic leaves the file exactly
+as it was and warns, because there is no answer it could pick without risking
+your source.
+
+- **More than one `@Component` per file.** The destination `.html`/`.scss` name is
+  derived from the **file** name, so N components in one file would all collide on
+  the same destination. The file is skipped with a warning; split it first.
+- **A decorator that already declares `templateUrl`, `styleUrl` or `styleUrls`.**
+  It is left alone, including the `styleUrl` (singular) form that
+  `ng generate component` emits since Angular 17. Adding `styleUrls` next to
+  `styleUrl` is rejected by the Angular compiler, so that combination is never
+  produced.
+- **Styles that are not static string literals** (e.g. `styles: [BASE_STYLES]`) and
+  empty `template`/`styles`: nothing can be externalized without dropping or
+  inventing content.
+- **`.css` / `.less` destinations.** Externalized styles are always written as
+  `.scss`; a workspace using another style extension needs to rename afterwards.
+- **Multi-project workspaces.** There is no `project` option: the scope is the
+  `path` you pass (default `src`), resolved against the tree root. A `path` that
+  does not exist is an **error**, not a silent no-op.
+
+The run is fail-closed: if any file errors mid-migration the schematic throws and
+the devkit discards **every** change, so a half-rewritten `.ts` is never flushed.
+The final line reports counters (`N migrados, M salteados, K con error`), so
+"migrated nothing" and "migrated everything" never look alike.
+
 ## Usage in a Project
 
 > **Status: not yet published to npm.** This package is **not** available via

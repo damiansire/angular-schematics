@@ -1,16 +1,25 @@
-import { type Rule, type SchematicContext, type Tree } from '@angular-devkit/schematics';
+import {
+  type Rule,
+  type SchematicContext,
+  SchematicsException,
+  type Tree,
+} from '@angular-devkit/schematics';
 import { dirname, join, basename, normalize } from 'path';
 import * as ts from 'typescript';
 
 // --- Helper Functions Restored ---
 
 /**
- * Finds the ObjectLiteralExpression node within the @Component decorator.
+ * Collects the metadata object of EVERY @Component decorator in the file, in
+ * source order. Returning all of them (instead of "the one") is what makes the
+ * multi-component case decidable by the caller: the destination .html/.scss name
+ * is derived from the FILE name, so with more than one component there is no
+ * correct destination and the file must be left alone.
  */
-function findComponentDecorator(sourceFile: ts.SourceFile): ts.ObjectLiteralExpression | null {
-  let componentDecorator: ts.ObjectLiteralExpression | null = null;
+function findComponentDecorators(sourceFile: ts.SourceFile): ts.ObjectLiteralExpression[] {
+  const componentDecorators: ts.ObjectLiteralExpression[] = [];
 
-  function visitNode(node: ts.Node) {
+  function visitNode(node: ts.Node): void {
     // Use ts.canHaveDecorators to check if the node can have decorators (more modern)
     if (ts.canHaveDecorators && ts.canHaveDecorators(node) && ts.isClassDeclaration(node)) {
       const decorators = ts.getDecorators(node);
@@ -27,22 +36,18 @@ function findComponentDecorator(sourceFile: ts.SourceFile): ts.ObjectLiteralExpr
               // longitud no lo estrecha.
               const metadataArgument = expression.arguments[0];
               if (metadataArgument && ts.isObjectLiteralExpression(metadataArgument)) {
-                componentDecorator = metadataArgument;
-                return; // Found, stop searching
+                componentDecorators.push(metadataArgument);
               }
             }
           }
         }
       }
     }
-    if (!componentDecorator) {
-      // Continue searching if not found
-      ts.forEachChild(node, visitNode);
-    }
+    ts.forEachChild(node, visitNode);
   }
 
   visitNode(sourceFile);
-  return componentDecorator;
+  return componentDecorators;
 }
 
 /**
@@ -108,6 +113,60 @@ function getIndent(source: string, node: ts.Node): string {
   const lineStart = source.lastIndexOf('\n', start - 1) + 1;
   const match = source.substring(lineStart, start).match(/^[ \t]*/);
   return match ? match[0] : '  ';
+}
+
+/** A single, ready-to-apply edit over the source text of a decorator. */
+interface DecoratorPropertyEdit {
+  /** Offset where the removal starts (may include the preceding comma). */
+  start: number;
+  /** How many characters to remove from `start`. */
+  length: number;
+  /** Text to insert at `start`, already carrying its comma and indentation. */
+  text: string;
+}
+
+/**
+ * Computes the edit that replaces `node` (a property of `decorator`) with
+ * `replacement`, preserving the decorator's own indentation and comma layout.
+ *
+ * Pure on purpose: template and styles used to carry two verbatim copies of this
+ * arithmetic and had already diverged, so an offset/comma fix had to be made
+ * twice. One implementation means one place to get it right, testable without a
+ * Tree. Returns null when the computed range falls outside `source`, which is
+ * the caller's signal to leave the file alone.
+ */
+function planDecoratorPropertyReplacement(
+  source: string,
+  decorator: ts.ObjectLiteralExpression,
+  node: ts.PropertyAssignment,
+  replacement: string,
+): DecoratorPropertyEdit | null {
+  const fileLength = source.length;
+
+  // If the property is the first one in the decorator, getFullStart points
+  // right after '{' and there is no leading comma. A leading comma in the
+  // inserted text would produce '@Component({, ... })'.
+  const isFirstProperty = decorator.properties[0] === node;
+
+  let start = Math.max(0, node.getFullStart());
+  const end = Math.min(fileLength, node.getEnd());
+
+  // Check for comma before (only relevant when not the first property)
+  if (!isFirstProperty) {
+    const commaMatchBefore = source.substring(0, start).match(/,\s*$/);
+    if (commaMatchBefore) {
+      start = Math.max(0, start - commaMatchBefore[0].length);
+    }
+  }
+
+  // Ensure we're not trying to remove beyond file bounds
+  if (start >= fileLength || end > fileLength) {
+    return null;
+  }
+
+  const indent = getIndent(source, node);
+  const connector = isFirstProperty ? `\n${indent}` : `,\n${indent}`;
+  return { start, length: end - start, text: `${connector}${replacement}` };
 }
 
 /**
@@ -204,8 +263,24 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
       `🚀 Starting search for components with inline templates and styles in ${searchPath} (onConflict=${onConflict})...`,
     );
 
+    // Fail loud on an empty scope: a typo in --path used to be indistinguishable
+    // from "there was nothing to migrate" (same log, exit 0, zero changes).
+    const searchDir = tree.getDir(searchPath);
+    if (searchDir.subfiles.length === 0 && searchDir.subdirs.length === 0) {
+      throw new SchematicsException(
+        `El directorio ${searchPath} no existe o está vacío en el árbol del proyecto. ` +
+          `Revisá la opción --path (por defecto 'src').`,
+      );
+    }
+
+    let migrated = 0;
+    let skipped = 0;
+    const failedFiles: string[] = [];
+
     try {
       tree.getDir(searchPath).visit((filePath) => {
+        let fileMutated = false;
+        let fileSkipped = false;
         try {
           if (!filePath.endsWith('.component.ts')) {
             context.logger.debug(`  ➡️ Skipping (not a .component.ts file)`);
@@ -221,7 +296,18 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
           const content = fileBuffer.toString('utf-8');
           const sourceFile = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true);
 
-          const componentDecorator = findComponentDecorator(sourceFile);
+          const componentDecorators = findComponentDecorators(sourceFile);
+          if (componentDecorators.length > 1) {
+            // The destination file name comes from the FILE name, so N components
+            // in one file would all collide on the same .html/.scss and only one
+            // would survive. There is no safe answer here: leave the file alone.
+            context.logger.warn(
+              `  ⚠️ Skipping ${filePath}: it declares ${componentDecorators.length} @Component classes and the destination file name is derived from the file name. Split them into one component per file and re-run.`,
+            );
+            fileSkipped = true;
+            return;
+          }
+          const componentDecorator = componentDecorators[0];
           if (!componentDecorator) {
             context.logger.debug(`  ❌ @Component decorator not found or non-standard. Skipping.`);
             return;
@@ -240,7 +326,16 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
               prop.name.text === 'templateUrl',
           );
 
-          if (!hasTemplateUrl) {
+          if (hasTemplateUrl) {
+            // Already external. Only worth a warning when there is ALSO an inline
+            // template, because that is the case the user expected us to migrate.
+            if (getDecoratorPropertyValue(componentDecorator, 'template') !== undefined) {
+              context.logger.warn(
+                `  ⚠️ Skipping template migration for ${filePath}: the decorator already declares templateUrl.`,
+              );
+              fileSkipped = true;
+            }
+          } else {
             const templateContent = getDecoratorPropertyValue(componentDecorator, 'template');
             // Only a static string template can be externalized. An array shape
             // is never valid for `template`, and `typeof` narrows away the cast.
@@ -263,53 +358,38 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
                 'template',
               );
               const safeToMigrateTemplate = resolution.action !== 'skip';
+              if (!safeToMigrateTemplate) {
+                fileSkipped = true;
+              }
               const relativeHtmlPath = `./${resolution.fileName}`;
               const targetHtmlPath = normalize(join(componentDir, resolution.fileName));
-              if (resolution.action === 'create') {
-                tree.create(targetHtmlPath, templateContent);
-              } else if (resolution.action === 'overwrite') {
-                tree.overwrite(targetHtmlPath, templateContent);
-              }
-              // 'reuse': destination already holds the right content; 'skip': handled below.
 
               const templatePropertyNode = getDecoratorPropertyNode(componentDecorator, 'template');
               if (safeToMigrateTemplate && templatePropertyNode) {
-                const recorder = tree.beginUpdate(filePath);
-                const fileLength = content.length;
-
-                // If the property is the first one in the decorator, getFullStart
-                // points right after '{' and there is no leading comma. A leading
-                // comma in the inserted text would produce '@Component({, ... })'.
-                const isFirstProperty = componentDecorator.properties[0] === templatePropertyNode;
-
-                // Calculate safe removal range
-                let removalStart = Math.max(0, templatePropertyNode.getFullStart());
-                const removalEnd = Math.min(fileLength, templatePropertyNode.getEnd());
-
-                // Check for comma before (only relevant when not the first property)
-                if (!isFirstProperty) {
-                  const textBeforeNode = content.substring(0, removalStart);
-                  const commaMatchBefore = textBeforeNode.match(/,\s*$/);
-
-                  if (commaMatchBefore) {
-                    removalStart = Math.max(0, removalStart - commaMatchBefore[0].length);
+                const edit = planDecoratorPropertyReplacement(
+                  content,
+                  componentDecorator,
+                  templatePropertyNode,
+                  `templateUrl: '${relativeHtmlPath}'`,
+                );
+                if (edit) {
+                  if (resolution.action === 'create') {
+                    tree.create(targetHtmlPath, templateContent);
+                  } else if (resolution.action === 'overwrite') {
+                    tree.overwrite(targetHtmlPath, templateContent);
                   }
-                }
-
-                // Ensure we're not trying to remove beyond file bounds
-                if (removalStart < fileLength && removalEnd <= fileLength) {
-                  recorder.remove(removalStart, removalEnd - removalStart);
-                  const indent = getIndent(content, templatePropertyNode);
-                  const textToInsert = isFirstProperty
-                    ? `\n${indent}templateUrl: '${relativeHtmlPath}'`
-                    : `,\n${indent}templateUrl: '${relativeHtmlPath}'`;
-                  recorder.insertLeft(removalStart, textToInsert);
+                  // 'reuse': destination already holds the right content.
+                  const recorder = tree.beginUpdate(filePath);
+                  recorder.remove(edit.start, edit.length);
+                  recorder.insertLeft(edit.start, edit.text);
                   tree.commitUpdate(recorder);
                   templateMutated = true;
+                  fileMutated = true;
                 } else {
                   context.logger.warn(
                     `  ⚠️ Skipping template update for ${filePath}: Invalid removal range`,
                   );
+                  fileSkipped = true;
                 }
               }
             }
@@ -337,7 +417,7 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
               ts.ScriptTarget.Latest,
               true,
             );
-            stylesComponentDecorator = findComponentDecorator(stylesSourceFile);
+            stylesComponentDecorator = findComponentDecorators(stylesSourceFile)[0] ?? null;
           } else {
             stylesContentSource = content;
             stylesComponentDecorator = componentDecorator;
@@ -346,14 +426,24 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
             return;
           }
 
-          const hasStyleUrls = stylesComponentDecorator.properties.some(
+          // `styleUrl` (singular) is what `ng generate component` emits since
+          // Angular 17, so it is the majority shape. Missing it here made the
+          // codemod append `styleUrls` next to it, which Angular rejects.
+          const hasExternalStyles = stylesComponentDecorator.properties.some(
             (prop) =>
               ts.isPropertyAssignment(prop) &&
               ts.isIdentifier(prop.name) &&
-              prop.name.text === 'styleUrls',
+              (prop.name.text === 'styleUrls' || prop.name.text === 'styleUrl'),
           );
 
-          if (!hasStyleUrls) {
+          if (hasExternalStyles) {
+            if (getDecoratorPropertyValue(stylesComponentDecorator, 'styles') !== undefined) {
+              context.logger.warn(
+                `  ⚠️ Skipping styles migration for ${filePath}: the decorator already declares styleUrl/styleUrls.`,
+              );
+              fileSkipped = true;
+            }
+          } else {
             const stylesContent = getDecoratorPropertyValue(stylesComponentDecorator, 'styles');
             if (stylesContent !== undefined) {
               const componentDir = dirname(filePath);
@@ -420,38 +510,20 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
                 styleResolutions.some((r) => r.resolution.action === 'skip');
 
               if (stylesSkip) {
-                // Per-element warnings already emitted by resolveConflict; leave inline intact.
+                // Per-element warnings already emitted above; leave inline intact.
+                fileSkipped = true;
               } else if (stylesPropertyNode) {
-                const recorder = tree.beginUpdate(filePath);
-                const fileLength = stylesContentSource.length;
-
-                // If the property is the first one in the decorator, getFullStart
-                // points right after '{' and there is no leading comma. A leading
-                // comma in the inserted text would produce '@Component({, ... })'.
-                const isFirstProperty =
-                  stylesComponentDecorator.properties[0] === stylesPropertyNode;
-
-                // Calculate safe removal range
-                let removalStart = Math.max(0, stylesPropertyNode.getFullStart());
-                const removalEnd = Math.min(fileLength, stylesPropertyNode.getEnd());
-
-                // Check for comma before (only relevant when not the first property)
-                if (!isFirstProperty) {
-                  const textBeforeNode = stylesContentSource.substring(0, removalStart);
-                  const commaMatchBefore = textBeforeNode.match(/,\s*$/);
-
-                  if (commaMatchBefore) {
-                    removalStart = Math.max(0, removalStart - commaMatchBefore[0].length);
-                  }
-                }
-
-                // Ensure we're not trying to remove beyond file bounds
-                if (removalStart < fileLength && removalEnd <= fileLength) {
-                  recorder.remove(removalStart, removalEnd - removalStart);
-
-                  const indent = getIndent(stylesContentSource, stylesPropertyNode);
-                  const connector = isFirstProperty ? `\n${indent}` : `,\n${indent}`;
-                  const styleUrls = styleResolutions.map(({ style, resolution }) => {
+                const styleUrls = styleResolutions.map(
+                  ({ resolution }) => `./${resolution.fileName}`,
+                );
+                const edit = planDecoratorPropertyReplacement(
+                  stylesContentSource,
+                  stylesComponentDecorator,
+                  stylesPropertyNode,
+                  `styleUrls: [${styleUrls.map((url) => `'${url}'`).join(', ')}]`,
+                );
+                if (edit) {
+                  for (const { style, resolution } of styleResolutions) {
                     const target = normalize(join(componentDir, resolution.fileName));
                     if (resolution.action === 'create') {
                       tree.create(target, style);
@@ -459,21 +531,23 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
                       tree.overwrite(target, style);
                     }
                     // 'reuse': destination already holds the right content.
-                    return `./${resolution.fileName}`;
-                  });
-                  const textToInsert = `${connector}styleUrls: [${styleUrls.map((url) => `'${url}'`).join(', ')}]`;
-                  recorder.insertLeft(removalStart, textToInsert);
-
+                  }
+                  const recorder = tree.beginUpdate(filePath);
+                  recorder.remove(edit.start, edit.length);
+                  recorder.insertLeft(edit.start, edit.text);
                   tree.commitUpdate(recorder);
+                  fileMutated = true;
                 } else {
                   context.logger.warn(
                     `  ⚠️ Skipping styles update for ${filePath}: Invalid removal range`,
                   );
+                  fileSkipped = true;
                 }
               }
             }
           }
         } catch (error) {
+          failedFiles.push(filePath);
           context.logger.error(`💥 Error processing file ${filePath}:`);
           if (error instanceof Error) {
             context.logger.error(`  Message: ${error.message}`);
@@ -482,6 +556,12 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
             }
           } else {
             context.logger.error(`  Error: ${String(error)}`);
+          }
+        } finally {
+          if (fileMutated) {
+            migrated++;
+          } else if (fileSkipped) {
+            skipped++;
           }
         }
       });
@@ -498,7 +578,20 @@ export function migrarTemplates(options: MigrarTemplatesOptions = {}): Rule {
       throw error;
     }
 
-    context.logger.info('\n🏁 Inline template and styles migration completed.');
+    context.logger.info(
+      `\n🏁 Inline template and styles migration completed: ${migrated} migrados, ${skipped} salteados, ${failedFiles.length} con error.`,
+    );
+
+    // Fail-closed: throwing makes the devkit discard the whole Tree, so a file
+    // that blew up mid-migration is never flushed half-rewritten under a green
+    // exit code. Partial source rewrites are the worst outcome for a codemod.
+    if (failedFiles.length > 0) {
+      throw new SchematicsException(
+        `La migración falló en ${failedFiles.length} archivo(s) y no se escribió ningún cambio: ${failedFiles.join(', ')}. ` +
+          `Revisá los errores de arriba, corregí esos archivos y volvé a correr el schematic.`,
+      );
+    }
+
     return tree;
   };
 }

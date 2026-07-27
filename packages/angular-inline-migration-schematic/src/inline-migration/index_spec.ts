@@ -28,12 +28,33 @@ async function migrate(
   files: Record<string, string>,
   options: Record<string, unknown> = {},
 ): Promise<UnitTestTree> {
+  return (await migrateWithLogs(files, options)).tree;
+}
+
+/**
+ * Same as `migrate`, but also captures everything the schematic logged.
+ * Every skip path of this codemod is visible ONLY through a warning: without
+ * asserting the message, "nothing to do" and "I silently gave up" are the same
+ * green test.
+ */
+async function migrateWithLogs(
+  files: Record<string, string>,
+  options: Record<string, unknown> = {},
+): Promise<{ tree: UnitTestTree; logs: string[] }> {
   const runner = new SchematicTestRunner('inline-migration', collectionPath);
+  const logs: string[] = [];
+  runner.logger.subscribe((entry) => logs.push(`${entry.level}: ${entry.message}`));
   const tree = Tree.empty();
   for (const [path, content] of Object.entries(files)) {
     tree.create(path, content);
   }
-  return runner.runSchematic('inline-migration', options, tree);
+  const result = await runner.runSchematic('inline-migration', options, tree);
+  return { tree: result, logs };
+}
+
+/** The single log line matching `pattern`, or '' when none matched. */
+function logMatching(logs: string[], pattern: RegExp): string {
+  return logs.find((line) => pattern.test(line)) ?? '';
 }
 
 const COMPONENT = '/src/app/foo.component.ts';
@@ -203,13 +224,21 @@ describe('inline-migration schematic', () => {
   });
 
   it('ignores components outside the default /src path', async () => {
+    // The scanned path (/src) must exist: an empty scope is an error now, so the
+    // fixture carries a real component inside /src and the assertion is that the
+    // one OUTSIDE is left alone.
     const result = await migrate({
-      '/lib/foo.component.ts': componentFile(`
+      [COMPONENT]: componentFile(`
   selector: 'app-foo',
+  template: '<p>inside</p>',
+`),
+      '/lib/foo.component.ts': componentFile(`
+  selector: 'app-bar',
   template: '<p>x</p>',
 `),
     });
 
+    expect(result.files).toContain('/src/app/foo.component.html');
     expect(result.files).not.toContain('/lib/foo.component.html');
     expect(result.readContent('/lib/foo.component.ts')).toContain("template: '<p>x</p>'");
   });
@@ -261,6 +290,168 @@ describe('inline-migration schematic', () => {
     expect(out).toContain('styles: []');
     expect(out).not.toContain('styleUrls');
     expect(parseErrorCount(out)).toBe(0);
+  });
+
+  describe('more than one @Component in the same file', () => {
+    const twoComponents = `import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-foo',
+  template: '<p>MAIN A</p>',
+})
+export class FooComponent {}
+
+@Component({
+  selector: 'app-bar',
+  template: '<p>HELPER B</p>',
+})
+export class BarComponent {}
+`;
+
+    it('leaves the file untouched and warns instead of rewriting the wrong class', async () => {
+      const { tree, logs } = await migrateWithLogs({ [COMPONENT]: twoComponents });
+
+      // Both templates stay inline and no .html is emitted: with one destination
+      // name per FILE there is no correct answer for two components.
+      expect(tree.readContent(COMPONENT)).toBe(twoComponents);
+      expect(tree.files).not.toContain('/src/app/foo.component.html');
+      expect(logMatching(logs, /2 @Component/)).toContain('warn:');
+    });
+  });
+
+  describe('styleUrl (singular, the Angular 17+ default)', () => {
+    it('leaves the decorator untouched when styleUrl coexists with inline styles', async () => {
+      const original = componentFile(`
+  selector: 'app-foo',
+  styleUrl: './foo.component.css',
+  styles: 'p { color: red; }',
+`);
+      const { tree, logs } = await migrateWithLogs({ [COMPONENT]: original });
+
+      const out = tree.readContent(COMPONENT);
+      // Emitting styleUrls next to styleUrl is rejected by the Angular compiler.
+      expect(out).toBe(original);
+      expect(out).not.toContain('styleUrls');
+      expect(tree.files).not.toContain('/src/app/foo.component.scss');
+      expect(logMatching(logs, /already declares styleUrl/)).toContain('warn:');
+    });
+
+    it('migrates only the template when styleUrl is present without inline styles', async () => {
+      const result = await migrate({
+        [COMPONENT]: componentFile(`
+  selector: 'app-foo',
+  styleUrl: './foo.component.css',
+  template: '<p>hi</p>',
+`),
+      });
+
+      const out = result.readContent(COMPONENT);
+      expect(out).toContain("templateUrl: './foo.component.html'");
+      expect(out).toContain("styleUrl: './foo.component.css'");
+      expect(out).not.toContain('styleUrls');
+      expect(parseErrorCount(out)).toBe(0);
+    });
+  });
+
+  describe('scope and reporting', () => {
+    it('fails loudly when the scanned path does not exist (no silent no-op)', async () => {
+      await expectAsync(
+        migrate(
+          {
+            [COMPONENT]: componentFile(`
+  selector: 'app-foo',
+  template: '<p>hi</p>',
+`),
+          },
+          { path: 'sourse' },
+        ),
+      ).toBeRejectedWithError(/\/sourse no existe o está vacío/);
+    });
+
+    it('closes with a counted summary instead of a fixed "completed" line', async () => {
+      const { logs } = await migrateWithLogs({
+        [COMPONENT]: componentFile(`
+  selector: 'app-foo',
+  template: '<p>hi</p>',
+`),
+        '/src/app/bar.component.ts': `import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-bar',
+  templateUrl: './bar.component.html',
+  template: '<p>ignored</p>',
+})
+export class BarComponent {}
+`,
+      });
+
+      expect(logMatching(logs, /🏁/)).toContain('1 migrados, 1 salteados, 0 con error');
+    });
+  });
+
+  describe('fail-closed', () => {
+    it('discards every change when a file blows up mid-migration', async () => {
+      // Fault injection: the destination .html path is occupied by a DIRECTORY,
+      // so tree.create throws after the template pass already mutated the .ts.
+      const original = componentFile(`
+  selector: 'app-foo',
+  template: '<p>hello</p>',
+`);
+
+      await expectAsync(
+        migrate({
+          [COMPONENT]: original,
+          '/src/app/foo.component.html/inner.txt': 'x',
+        }),
+      ).toBeRejectedWithError(/no se escribió ningún cambio/);
+    });
+  });
+
+  describe('warnings are the only visible signal of a skip', () => {
+    const conflict = () => ({
+      [COMPONENT]: componentFile(`
+  selector: 'app-foo',
+  template: '<p>new</p>',
+`),
+      '/src/app/foo.component.html': '<p>existing</p>',
+    });
+
+    it('warns on skip', async () => {
+      const { logs } = await migrateWithLogs(conflict());
+      expect(logMatching(logs, /Skipping template migration/)).toContain('onConflict=skip');
+    });
+
+    it('warns on overwrite', async () => {
+      const { logs } = await migrateWithLogs(conflict(), { onConflict: 'overwrite' });
+      expect(logMatching(logs, /Overwriting/)).toContain('onConflict=overwrite');
+    });
+
+    it('warns on suffix, naming the file it actually wrote', async () => {
+      const { logs } = await migrateWithLogs(conflict(), { onConflict: 'suffix' });
+      expect(logMatching(logs, /writing template to/)).toContain(
+        'foo.component.1.html instead (onConflict=suffix)',
+      );
+    });
+
+    it('warns when the inline styles array is empty', async () => {
+      const { logs } = await migrateWithLogs({
+        [COMPONENT]: componentFile(`
+  selector: 'app-foo',
+  styles: [],
+`),
+      });
+      expect(logMatching(logs, /"styles" is empty/)).toContain('warn:');
+    });
+
+    it('warns when a styles entry is not a static string literal', async () => {
+      const { logs } = await migrateWithLogs({
+        [COMPONENT]: componentFile(`
+  selector: 'app-foo',
+  styles: [BASE_STYLES],
+`),
+      });
+      expect(logMatching(logs, /not a static string literal/)).toContain('warn:');
+    });
   });
 
   it('matches the existing decorator indentation when inserting (not hardcoded 2 spaces)', async () => {
