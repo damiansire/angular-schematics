@@ -3,7 +3,14 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   eslint.configs.recommended,
-  ...tseslint.configs.recommended,
+  // Lint CON información de tipos: es la única forma de que reglas como
+  // no-floating-promises o no-unsafe-* vean lo que el compilador ve.
+  ...tseslint.configs.recommendedTypeChecked,
+  {
+    languageOptions: {
+      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+    },
+  },
   {
     // Los parámetros prefijados con `_` son intencionalmente no usados
     // (firmas exigidas por las Rule de @angular-devkit/schematics).
@@ -35,6 +42,12 @@ export default tseslint.config(
     rules: {
       'no-console': 'off',
     },
+  },
+  {
+    // Los `.mjs` (config de eslint, scripts de build) no están en ningún
+    // tsconfig: se lintean sin información de tipos.
+    files: ['**/*.mjs'],
+    extends: [tseslint.configs.disableTypeChecked],
   },
   { ignores: ['**/dist/**', '**/node_modules/**'] },
 );
