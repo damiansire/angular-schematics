@@ -1,5 +1,6 @@
 import { SchematicTestRunner, type UnitTestTree } from '@angular-devkit/schematics/testing';
 import { type Tree, type SchematicContext } from '@angular-devkit/schematics';
+import { execFileSync } from 'child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -264,5 +265,131 @@ describe('signal-store schematic', () => {
 
     expect(tree.files).toContain('/src/app/cart.store.spec.ts');
     expect(tree.readContent('/src/app/cart.store.spec.ts')).toContain("describe('CartStore'");
+  });
+
+  describe('the emitted spec EXECUTES against the real @angular/core (not just type-checks)', () => {
+    // Type-checking the emitted spec proves it compiles; only running it proves
+    // the assertions it hands to the consumer actually hold. The package builds
+    // to CommonJS and @angular/core ships ESM-only, so the pair store + spec is
+    // transpiled to .mjs and executed in a child Node process, with a shim that
+    // collects describe/it/beforeEach and a fail-loud micro-expect covering the
+    // matchers the template uses.
+    const RUNNER = `
+import { isDeepStrictEqual } from 'node:util';
+
+const specs = [];
+const beforeEachFns = [];
+
+function matchers(actual, negated) {
+  const verdict = (pass, description) => {
+    if (pass === negated) {
+      throw new Error('assertion failed: ' + description);
+    }
+  };
+  return {
+    get not() {
+      return matchers(actual, !negated);
+    },
+    toBe(expected) {
+      verdict(Object.is(actual, expected), 'expected toBe ' + String(expected));
+    },
+    toEqual(expected) {
+      verdict(isDeepStrictEqual(actual, expected), 'expected toEqual ' + JSON.stringify(expected));
+    },
+    toBeNull() {
+      verdict(actual === null, 'expected toBeNull, got ' + String(actual));
+    },
+  };
+}
+
+globalThis.describe = (_name, fn) => fn();
+globalThis.beforeEach = (fn) => beforeEachFns.push(fn);
+globalThis.it = (name, fn) => specs.push({ name, fn });
+globalThis.expect = (actual) => matchers(actual, false);
+
+await import('./cart.store.spec.mjs');
+
+let failures = 0;
+for (const spec of specs) {
+  try {
+    for (const fn of beforeEachFns) fn();
+    spec.fn();
+  } catch (error) {
+    failures += 1;
+    console.error('FAIL ' + spec.name + ': ' + (error instanceof Error ? error.message : String(error)));
+  }
+}
+console.log('executed=' + specs.length + ' failures=' + failures);
+if (specs.length === 0 || failures > 0) {
+  process.exit(1);
+}
+`;
+
+    function toEsm(source: string): string {
+      return ts.transpileModule(source, {
+        compilerOptions: {
+          target: ts.ScriptTarget.ES2022,
+          module: ts.ModuleKind.ES2022,
+          experimentalDecorators: true,
+        },
+      }).outputText;
+    }
+
+    /**
+     * Writes store + spec + runner to a temp dir INSIDE the package so the
+     * child process resolves '@angular/core' against the workspace
+     * node_modules, and runs the emitted spec for real.
+     */
+    function runEmittedSpec(storeSource: string, specSource: string): string {
+      const dir = mkdtempSync(join(__dirname, '..', '..', '.tmp-emitted-spec-'));
+      try {
+        writeFileSync(join(dir, 'cart.store.mjs'), toEsm(storeSource), 'utf8');
+        writeFileSync(
+          join(dir, 'cart.store.spec.mjs'),
+          toEsm(specSource).replace("from './cart.store'", "from './cart.store.mjs'"),
+          'utf8',
+        );
+        writeFileSync(join(dir, 'runner.mjs'), RUNNER, 'utf8');
+
+        return execFileSync(process.execPath, [join(dir, 'runner.mjs')], {
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    }
+
+    it('runs every assertion the generated spec hands to the consumer, and they hold', async () => {
+      const tree = await run({ name: 'cart' });
+      const storeSource = tree.readContent('/src/app/cart.store.ts');
+      const specSource = tree.readContent('/src/app/cart.store.spec.ts');
+
+      // Self-syncing floor: however many specs the template declares, that
+      // exact number must have executed (a runner that collects zero would
+      // otherwise pass in silence).
+      const declared = (specSource.match(/\bit\(/g) ?? []).length;
+      expect(declared).toBeGreaterThanOrEqual(4);
+
+      const stdout = runEmittedSpec(storeSource, specSource);
+
+      expect(stdout).toContain(`executed=${declared} failures=0`);
+    });
+
+    it('the harness catches a store that misbehaves (guard against a vacuous run)', async () => {
+      const tree = await run({ name: 'cart' });
+      const storeSource = tree.readContent('/src/app/cart.store.ts');
+      const specSource = tree.readContent('/src/app/cart.store.spec.ts');
+
+      const sabotaged = storeSource.replace(
+        'this.state.set(initialState);',
+        '/* reset sabotaged */',
+      );
+      expect(sabotaged).not.toBe(storeSource);
+
+      expect(() => runEmittedSpec(sabotaged, specSource)).toThrowError(
+        /Command failed|status 1|exited/i,
+      );
+    });
   });
 });

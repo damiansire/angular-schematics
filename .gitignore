@@ -3,6 +3,10 @@
 dist
 coverage/
 
+# Dir temporal del spec que ejecuta el codigo emitido (se borra solo; esto
+# cubre el caso de una corrida abortada a mitad de camino).
+.tmp-emitted-spec-*/
+
 # IDEs
 .idea/
 jsconfig.json

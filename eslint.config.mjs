@@ -49,5 +49,7 @@ export default tseslint.config(
     files: ['**/*.mjs'],
     extends: [tseslint.configs.disableTypeChecked],
   },
-  { ignores: ['**/dist/**', '**/node_modules/**'] },
+  // `.tmp-emitted-spec-*` es el dir transitorio donde la suite ejecuta el
+  // codigo emitido; se borra solo, pero una corrida abortada no debe romper lint.
+  { ignores: ['**/dist/**', '**/node_modules/**', '**/.tmp-emitted-spec-*/**'] },
 );
