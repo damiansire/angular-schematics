@@ -29,6 +29,9 @@
     "provenance": true
   },
   "schematics": "./collection.json",
+  "ng-add": {
+    "save": "devDependencies"
+  },
   "files": [
     "collection.json",
     "ng-add/**/*.js",
@@ -37,7 +40,7 @@
     "inline-migration/**/*.js",
     "inline-migration/**/*.d.ts",
     "inline-migration/**/*.json",
-    "!inline-migration/**/*_spec.*"
+    "!**/*_spec.*"
   ],
   "dependencies": {
     "@angular-devkit/schematics": "^19.2.7"

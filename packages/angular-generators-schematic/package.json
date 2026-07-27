@@ -30,6 +30,9 @@
     "provenance": true
   },
   "schematics": "./collection.json",
+  "ng-add": {
+    "save": "devDependencies"
+  },
   "files": [
     "collection.json",
     "ng-add/**/*.js",

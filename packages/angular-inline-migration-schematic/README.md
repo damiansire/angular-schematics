@@ -59,8 +59,12 @@ To use this schematic in your Angular project (once published):
 1.  **Installation (after the package is published on npm):**
 
     ```bash
-    npm install --save-dev angular-inline-migration-schematic
+    ng add angular-inline-migration-schematic
     ```
+
+    `ng add` is the primary path: the package declares
+    `"ng-add": { "save": "devDependencies" }`, so the CLI saves this build-time
+    tool where it belongs instead of in the app's runtime dependencies.
 
 2.  **Execution:**
     Navigate to the root of your Angular project and run:
