@@ -1,4 +1,4 @@
-import { apply, applyTemplates, mergeWith, move, Rule, url } from '@angular-devkit/schematics';
+import { apply, applyTemplates, mergeWith, move, type Rule, url } from '@angular-devkit/schematics';
 import { strings } from '@angular-devkit/core';
 import { normalize } from 'path';
 

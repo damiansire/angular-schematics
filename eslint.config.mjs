@@ -16,13 +16,24 @@ export default tseslint.config(
           caughtErrorsIgnorePattern: '^_',
         },
       ],
+      // Barra de ts-libs (remeda): igualdad estricta salvo el idiom `== null`,
+      // type-imports explícitos (los pide `isolatedModules`) y cero `console`
+      // en el código de librería: la salida del schematic va por
+      // `context.logger`, que sí es testeable.
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
+      'no-console': 'error',
+      '@typescript-eslint/consistent-type-imports': ['error', { fixStyle: 'inline-type-imports' }],
     },
   },
   {
-    // Scripts de build/publish que corren en Node.
+    // Scripts de build/publish que corren en Node: acá la salida por consola
+    // ES la interfaz de usuario del script, no un log olvidado.
     files: ['scripts/**/*.mjs'],
     languageOptions: {
       globals: { console: 'readonly', process: 'readonly' },
+    },
+    rules: {
+      'no-console': 'off',
     },
   },
   { ignores: ['**/dist/**', '**/node_modules/**'] },

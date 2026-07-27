@@ -1,4 +1,4 @@
-import { Rule, SchematicContext, Tree } from '@angular-devkit/schematics';
+import { type Rule, type SchematicContext, type Tree } from '@angular-devkit/schematics';
 import { strings } from '@angular-devkit/core';
 import { join, normalize } from 'path';
 import { scaffold } from '../utils/scaffold';

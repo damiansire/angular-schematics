@@ -1,4 +1,4 @@
-import { Rule, SchematicContext, Tree } from '@angular-devkit/schematics';
+import { type Rule, type SchematicContext, type Tree } from '@angular-devkit/schematics';
 import { dirname, join, basename, normalize } from 'path';
 import * as ts from 'typescript';
 
@@ -22,11 +22,12 @@ function findComponentDecorator(sourceFile: ts.SourceFile): ts.ObjectLiteralExpr
               ts.isIdentifier(expression.expression) &&
               expression.expression.text === 'Component'
             ) {
-              if (
-                expression.arguments.length > 0 &&
-                ts.isObjectLiteralExpression(expression.arguments[0])
-              ) {
-                componentDecorator = expression.arguments[0];
+              // Se liga el argumento a una const: con `noUncheckedIndexedAccess`
+              // el indexado devuelve `Expression | undefined` y el chequeo de
+              // longitud no lo estrecha.
+              const metadataArgument = expression.arguments[0];
+              if (metadataArgument && ts.isObjectLiteralExpression(metadataArgument)) {
+                componentDecorator = metadataArgument;
                 return; // Found, stop searching
               }
             }

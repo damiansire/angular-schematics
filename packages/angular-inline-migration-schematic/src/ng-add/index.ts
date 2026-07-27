@@ -1,4 +1,4 @@
-import { Rule, SchematicContext, Tree } from '@angular-devkit/schematics';
+import { type Rule, type SchematicContext, type Tree } from '@angular-devkit/schematics';
 
 /**
  * `ng add` entry point. This package only exposes a one-off migration

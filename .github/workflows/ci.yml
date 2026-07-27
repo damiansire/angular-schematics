@@ -19,16 +19,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
-      - name: Lint (eslint, 0 warnings)
-        run: npm run lint -- --max-warnings 0
-      - name: Format check (prettier)
-        run: npm run format:check
-      - name: Typecheck (tsc --noEmit, strict)
-        run: npm run typecheck
-      - name: Build (todos los workspaces)
-        run: npm run build
-      - name: Test
-        run: npm test
+      # Un solo comando, el mismo que corre el contribuidor antes de abrir un
+      # PR: si CI y local son dos listas distintas de pasos, divergen (y este
+      # repo ya pagó dos commits de `fix(ci)` por eso).
+      - name: Verify (lint + format + typecheck + build + test)
+        run: npm run verify
 
   # Node fijo (LTS más reciente): matrixea versiones MAYORES de
   # @angular-devkit/core y @angular-devkit/schematics para detectar breakage

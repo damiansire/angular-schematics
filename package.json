@@ -26,9 +26,11 @@
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test:coverage": "c8 npm test",
+    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run build && npm run test:coverage",
     "changeset": "changeset",
     "version": "changeset version",
     "publish:dist": "npm run build --workspaces --if-present && node scripts/publish-dist.mjs"
@@ -36,6 +38,7 @@
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
     "@eslint/js": "^9.13.0",
+    "c8": "^10.1.3",
     "eslint": "^9.13.0",
     "prettier": "^3.3.0",
     "typescript": "^5.8.3",

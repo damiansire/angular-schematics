@@ -1,4 +1,9 @@
-import { Rule, SchematicContext, SchematicsException, Tree } from '@angular-devkit/schematics';
+import {
+  type Rule,
+  type SchematicContext,
+  SchematicsException,
+  type Tree,
+} from '@angular-devkit/schematics';
 import { scaffold } from '../utils/scaffold';
 
 export interface SignalStoreOptions {

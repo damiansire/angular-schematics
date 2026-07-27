@@ -1,5 +1,5 @@
-import { SchematicTestRunner, UnitTestTree } from '@angular-devkit/schematics/testing';
-import { Tree, SchematicContext } from '@angular-devkit/schematics';
+import { SchematicTestRunner, type UnitTestTree } from '@angular-devkit/schematics/testing';
+import { type Tree, type SchematicContext } from '@angular-devkit/schematics';
 import { join } from 'path';
 import * as ts from 'typescript';
 import { signalStore } from './index';

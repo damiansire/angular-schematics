@@ -1,6 +1,7 @@
 
 # Outputs
 dist
+coverage/
 
 # IDEs
 .idea/
@@ -15,4 +16,15 @@ yarn-error.log*
 # Mac OSX Finder files.
 **/.DS_Store
 .DS_Store
+
+# Secretos: nunca en un repo público (el ejemplo sí se versiona).
+.env
+.env.*
+!.env.example
+
+# Artefactos de proceso interno (auditorías, reportes): no son el deliverable
+# y no se publican. Hoy dependían de un exclude local, que no viaja con el repo.
+_audit/
+_audits/
+AUDITORIA.md
 

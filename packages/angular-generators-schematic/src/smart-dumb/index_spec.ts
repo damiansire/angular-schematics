@@ -1,4 +1,4 @@
-import { SchematicTestRunner, UnitTestTree } from '@angular-devkit/schematics/testing';
+import { SchematicTestRunner, type UnitTestTree } from '@angular-devkit/schematics/testing';
 import { join } from 'path';
 import * as ts from 'typescript';
 
