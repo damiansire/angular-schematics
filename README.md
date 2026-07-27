@@ -40,6 +40,12 @@ npm run version     # consume the changesets: version bump + CHANGELOG
 npm run publish:dist  # build + npm publish of the package's dist/
 ```
 
+`node scripts/publish-dist.mjs --dry-run` runs the same walk (including the
+"is this version already on npm?" check) without publishing anything, which is
+how the release path is exercised locally. That check only treats a real
+registry 404 as "not published yet": any other failure (auth, network, a
+registry that is down) aborts instead of silently deciding to publish.
+
 In CI, the `release` workflow (`.github/workflows/release.yml`) runs on merge to
 `main` and opens/updates a "Version Packages" PR with the pending bumps and
 changelog. Publishing to npm stays a deliberate, manual step (`npm run
