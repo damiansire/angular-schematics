@@ -1,0 +1,20 @@
+version: 2
+
+# El gate de `npm audit` en ci.yml detecta la CVE cuando ya está adentro. Esto es
+# la otra mitad: las bumps llegan solas como PR, en vez de depender de que
+# alguien corra el comando a mano.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      dev-dependencies:
+        dependency-type: development
+
+  # Las actions están pinneadas: sin este ecosistema, el pin envejece en silencio.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -22,8 +22,15 @@ jobs:
       # Un solo comando, el mismo que corre el contribuidor antes de abrir un
       # PR: si CI y local son dos listas distintas de pasos, divergen (y este
       # repo ya pagó dos commits de `fix(ci)` por eso).
-      - name: Verify (lint + format + typecheck + build + test)
+      - name: Verify (lint + format + typecheck + build + pack + test)
         run: npm run verify
+
+      # Gate de supply-chain sobre lo que viaja al consumidor: `--omit=dev` mide
+      # el árbol de producción de los paquetes publicados, no el toolchain del
+      # repo. Sin este step una CVE high entraba y se publicaba sin que nada la
+      # notara (pasó con fast-uri vía @angular-devkit/core -> ajv).
+      - name: Audit de dependencias de producción
+        run: npm audit --omit=dev --audit-level=high
 
   # Node fijo (LTS más reciente): matrixea versiones MAYORES de
   # @angular-devkit/core y @angular-devkit/schematics para detectar breakage
