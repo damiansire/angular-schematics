@@ -37,7 +37,7 @@ jobs:
       # to npm stays a deliberate, manual step (no auto-publish). Re-add a
       # `publish:` line + NPM_TOKEN when you want CI to publish.
       - name: Version packages (Changesets)
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
           version: npm run version
         env:
