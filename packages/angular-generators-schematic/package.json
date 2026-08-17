@@ -55,7 +55,7 @@
     "!**/*_spec.*"
   ],
   "dependencies": {
-    "@angular-devkit/core": "^19.2.7",
+    "@angular-devkit/core": "^22.1.4",
     "@angular-devkit/schematics": "^19.2.7"
   },
   "peerDependencies": {
