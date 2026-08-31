@@ -43,7 +43,7 @@
     "!**/*_spec.*"
   ],
   "dependencies": {
-    "@angular-devkit/schematics": "^19.2.7"
+    "@angular-devkit/schematics": "^22.1.6"
   },
   "peerDependencies": {
     "typescript": ">=5.0.0"
